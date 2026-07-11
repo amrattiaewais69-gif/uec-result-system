@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UEC Appeal Portal</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;font-family:'Poppins',sans-serif;}
+body{margin:0;background:#2f528f;min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;}
+.card{background:#eee;width:450px;border-radius:12px;padding:30px;text-align:center;}
+.logo{width:90px;margin-bottom:10px;}
+.studentPhoto{width:120px;height:120px;border-radius:50%;margin:auto;display:block;}
+table{width:100%;border-collapse:collapse;margin-top:20px;}
+th{background:#4e81bd;color:white;padding:10px;}
+td{padding:10px;border:1px solid #ddd;text-align:center;}
+textarea{width:100%;margin-top:10px;padding:10px;border-radius:6px;border:1px solid #ccc;height:90px;}
+button{width:100%;padding:12px;margin-top:10px;background:#345a9d;border:none;color:white;border-radius:6px;cursor:pointer;}
+button:hover{background:#274a86;}
+.logout{background:#777;}
+.footer{margin-top:30px;color:white;font-size:14px;text-align:center;}
+</style>
+</head>
+<body>
+
+<div class="card">
+<img src="logo.png" class="logo">
+<h2>Appeal Request</h2>
+<img id="photo" class="studentPhoto">
+<h3 id="name"></h3>
+<p id="sid"></p>
+
+<div id="appealSection">
+<label for="courseSelect"><strong>Select Course to Appeal:</strong></label>
+<table id="coursesTable">
+<tr><th>Select</th><th>Course</th></tr>
+</table>
+
+<textarea id="reason" placeholder="Reason for Appeal"></textarea>
+<button onclick="submitAppeal()">Submit Appeal</button>
+</div>
+
+<button class="logout" onclick="logout()">Logout</button>
+
+<h3>Your Previous Appeals</h3>
+<table id="appealHistoryTable">
+<tr><th>Course</th><th>Reason</th><th>Date</th><th>Status</th></tr>
+</table>
+</div>
+
+<div class="footer">
+Designed by UEC ICT Department<br>
+© 2026 University of East Capital
+</div>
+
+<script>
+const API = window.location.origin + '/api';
+const token = localStorage.getItem('resultToken');
+const student = JSON.parse(localStorage.getItem('student'));
+
+if (!token || !student) { location = 'index.html'; }
+
+document.getElementById('name').innerText = student.name;
+document.getElementById('sid').innerText = 'Student ID: ' + student.id;
+document.getElementById('photo').src = 'https://amrattiaewais69-gif.github.io/student-results/photos/' + student.id.replace('-', '') + '.jpg';
+
+// Load Courses with Deadline Check
+async function loadCourses() {
+  const res = await fetch(API + '/student/appeal-courses', {
+    headers: { 'Authorization': 'Bearer ' + token }
+  });
+  const data = await res.json();
+
+  if (data.status === 'closed') {
+    document.getElementById('appealSection').innerHTML = '<p style="color:red;font-weight:bold;">' + data.message + '</p>';
+    return;
+  }
+
+  const table = document.getElementById('coursesTable');
+  data.courses.forEach(c => {
+    table.innerHTML += '<tr><td><input type="radio" name="course" value="' + c + '"></td><td>' + c + '</td></tr>';
+  });
+}
+loadCourses();
+
+// Load Previous Appeals
+async function loadAppealHistory() {
+  const res = await fetch(API + '/student/appeals', {
+    headers: { 'Authorization': 'Bearer ' + token }
+  });
+  const history = await res.json();
+  const table = document.getElementById('appealHistoryTable');
+  history.forEach(h => {
+    const statusColor = h.status === 'Revised with change' ? 'green' : h.status === 'Revised without change' ? 'red' : 'orange';
+    table.innerHTML += '<tr><td>' + h.course + '</td><td>' + h.reason + '</td><td>' + new Date(h.date).toLocaleDateString() + '</td><td style="color:' + statusColor + ';font-weight:bold;">' + h.status + '</td></tr>';
+  });
+}
+loadAppealHistory();
+
+// Submit Appeal
+async function submitAppeal() {
+  const course = document.querySelector('input[name="course"]:checked');
+  const reason = document.getElementById('reason').value;
+  if (!course) { alert('Please select course'); return; }
+  if (!reason) { alert('Please write reason'); return; }
+
+  const res = await fetch(API + '/student/appeal', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + token
+    },
+    body: JSON.stringify({ course: course.value, reason })
+  });
+
+  const data = await res.json();
+  if (res.ok) {
+    alert('Appeal submitted successfully');
+    location.reload();
+  } else {
+    alert(data.error || 'Failed to submit appeal');
+  }
+}
+
+function logout() {
+  localStorage.clear();
+  location = 'index.html';
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UEC Student Results</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;font-family:'Poppins',sans-serif;}
+body{margin:0;background:#2f528f;min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;}
+.card{background:#eee;width:450px;border-radius:12px;padding:30px;text-align:center;}
+.logo{width:90px;margin-bottom:10px;}
+input{width:100%;padding:12px;margin:8px 0;border-radius:6px;border:1px solid #ccc;}
+button{width:100%;padding:12px;margin-top:10px;background:#345a9d;border:none;color:white;border-radius:6px;cursor:pointer;font-size:15px;}
+button:hover{background:#274a86;}
+.studentPhoto{width:120px;height:120px;border-radius:50%;margin:auto;display:block;}
+table{width:100%;border-collapse:collapse;margin-top:20px;}
+th{background:#4e81bd;color:white;padding:10px;}
+td{padding:10px;border:1px solid #ddd;text-align:center;}
+.logout{background:#777;margin-top:15px;}
+.footer{margin-top:30px;color:white;font-size:14px;text-align:center;}
+.gpa-box{background:#345a9d;color:white;padding:10px;border-radius:8px;margin-top:15px;font-size:18px;}
+.change-pass{margin-top:15px;padding:10px;border-radius:6px;border:1px solid #ccc;width:100%;}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="card" id="loginBox">
+<img src="logo.png" class="logo">
+<h2>🎓 University of East Capital</h2>
+<p>Student Result Portal</p>
+<input id="studentId" placeholder="Student ID">
+<input id="password" type="password" placeholder="Password">
+<button onclick="login()">Login</button>
+</div>
+
+<!-- RESULTS -->
+<div class="card" id="resultBox" style="display:none">
+<img src="logo.png" class="logo">
+<img id="photo" class="studentPhoto">
+<h2 id="name"></h2>
+<p id="sid"></p>
+
+<table id="resultsTable">
+<tr><th>Course</th><th>Grade</th></tr>
+</table>
+
+<div class="gpa-box">GPA: <span id="gpa"></span></div>
+
+<button onclick="downloadPDF()">Download PDF</button>
+
+<a href="appeal.html" style="display:block;margin-top:10px;color:#345a9d;text-decoration:none;">Submit Appeal</a>
+
+<div id="changePassSection" style="display:none;margin-top:15px;">
+<input class="change-pass" id="newPassword" type="password" placeholder="New Password">
+<button onclick="changePassword()">Update Password</button>
+</div>
+
+<button class="logout" onclick="logout()">Logout</button>
+</div>
+
+<div class="footer">
+UEC ICT Department<br>
+© 2026 University of East Capital
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
+<script>
+const API = window.location.origin + '/api';
+let studentData = null;
+let token = localStorage.getItem('resultToken');
+
+if (token) {
+  loadResults();
+}
+
+async function login() {
+  const id = document.getElementById('studentId').value.trim();
+  const password = document.getElementById('password').value;
+
+  if (!id || !password) {
+    alert('Please enter Student ID and password');
+    return;
+  }
+
+  try {
+    const res = await fetch(API + '/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, password })
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      token = data.token;
+      localStorage.setItem('resultToken', token);
+      localStorage.setItem('student', JSON.stringify(data.student));
+      loadResults();
+    } else {
+      alert(data.error || 'Login failed');
+    }
+  } catch (err) {
+    alert('Error connecting to server');
+  }
+}
+
+async function loadResults() {
+  try {
+    const res = await fetch(API + '/student/results', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+
+    if (!res.ok) {
+      localStorage.removeItem('resultToken');
+      localStorage.removeItem('student');
+      location.reload();
+      return;
+    }
+
+    const data = await res.json();
+    studentData = data;
+
+    document.getElementById('loginBox').style.display = 'none';
+    document.getElementById('resultBox').style.display = 'block';
+    document.getElementById('name').innerText = data.name;
+    document.getElementById('sid').innerText = 'Student ID: ' + data.id;
+    document.getElementById('gpa').innerText = data.gpa;
+
+    const photo = document.getElementById('photo');
+    photo.src = 'https://amrattiaewais69-gif.github.io/student-results/photos/' + data.id.replace('-', '') + '.jpg';
+
+    const table = document.getElementById('resultsTable');
+    for (const [course, grade] of Object.entries(data.courses)) {
+      const row = table.insertRow();
+      row.innerHTML = '<td>' + course + '</td><td>' + grade + '</td>';
+    }
+
+    // Check if first login
+    const student = JSON.parse(localStorage.getItem('student'));
+    if (student && student.firstLogin) {
+      document.getElementById('changePassSection').style.display = 'block';
+    }
+  } catch (err) {
+    alert('Error loading results');
+  }
+}
+
+async function changePassword() {
+  const newPassword = document.getElementById('newPassword').value;
+  if (!newPassword || newPassword.length < 4) {
+    alert('Password must be at least 4 characters');
+    return;
+  }
+
+  try {
+    const res = await fetch(API + '/auth/change-password', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify({ newPassword })
+    });
+
+    const data = await res.json();
+    if (res.ok) {
+      alert('Password updated successfully');
+      document.getElementById('changePassSection').style.display = 'none';
+      const student = JSON.parse(localStorage.getItem('student'));
+      student.firstLogin = false;
+      localStorage.setItem('student', JSON.stringify(student));
+    } else {
+      alert(data.error || 'Failed to update password');
+    }
+  } catch (err) {
+    alert('Error updating password');
+  }
+}
+
+function downloadPDF() {
+  if (!studentData) return;
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  doc.setFontSize(20);
+  doc.text('University of East Capital', 105, 20, { align: 'center' });
+  doc.setFontSize(14);
+  doc.text('Student Result Statement', 105, 30, { align: 'center' });
+
+  doc.setFontSize(12);
+  doc.text('Name: ' + studentData.name, 20, 50);
+  doc.text('Student ID: ' + studentData.id, 20, 60);
+  doc.text('GPA: ' + studentData.gpa, 20, 70);
+
+  let y = 90;
+  doc.setFontSize(11);
+  doc.text('Course', 20, y);
+  doc.text('Grade', 150, y);
+  y += 5;
+  doc.line(20, y, 190, y);
+  y += 10;
+
+  for (const [course, grade] of Object.entries(studentData.courses)) {
+    doc.text(course, 20, y);
+    doc.text(grade, 150, y);
+    y += 10;
+  }
+
+  y += 10;
+  doc.setFontSize(12);
+  doc.text('Verified by UEC', 105, y, { align: 'center' });
+  y += 10;
+  doc.setFontSize(10);
+  doc.text('This document is digitally generated and does not require a signature.', 105, y, { align: 'center' });
+
+  doc.save('UEC_Result_' + studentData.id + '.pdf');
+}
+
+function logout() {
+  localStorage.clear();
+  location.reload();
+}
+</script>
+</body>
+</html>

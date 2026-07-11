@@ -1,0 +1,87 @@
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const compression = require('compression');
+const rateLimit = require('express-rate-limit');
+const path = require('path');
+
+const authRoutes = require('./routes/auth');
+const studentRoutes = require('./routes/student');
+const controlRoutes = require('./routes/control');
+const accountantRoutes = require('./routes/accountant');
+const verifyRoutes = require('./routes/verify');
+
+const app = express();
+const PORT = process.env.PORT || 3001;
+
+// Security
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false
+}));
+
+// CORS
+const allowedOrigins = [
+  process.env.CORS_ORIGIN,
+  'result.uec.edu.eg',
+  'result-system.vercel.app',
+  'http://localhost:3001'
+].filter(Boolean);
+
+app.use(cors({
+  origin: function(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  }
+}));
+
+// Compression
+app.use(compression());
+
+// Rate limiting
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  message: { error: 'Too many requests, please try again later' }
+});
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 50,
+  message: { error: 'Too many login attempts, please try again later' }
+});
+
+app.use('/api/', generalLimiter);
+app.use('/api/auth/login', loginLimiter);
+app.use('/api/auth/account-login', loginLimiter);
+
+// Body parsing
+app.use(express.json());
+
+// Static files
+app.use(express.static(path.join(__dirname, 'public')));
+
+// API routes
+app.use('/api/auth', authRoutes);
+app.use('/api/student', studentRoutes);
+app.use('/api/control', controlRoutes);
+app.use('/api/account', accountantRoutes);
+app.use('/api/verify', verifyRoutes);
+
+// Health check
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// SPA fallback
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+app.listen(PORT, () => {
+  console.log(`UEC Result System running on port ${PORT}`);
+});

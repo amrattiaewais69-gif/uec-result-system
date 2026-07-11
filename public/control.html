@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UEC Control Panel</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;font-family:'Poppins',sans-serif;}
+body{margin:0;background:#2f528f;min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;}
+.card{background:#eee;width:97%;max-width:1100px;border-radius:12px;padding:25px;text-align:center;}
+.card2{background:#eee;width:31%;border-radius:12px;padding:25px;text-align:center;}
+.logo{width:70px;margin-bottom:5px;opacity:0.9;}
+input{width:100%;padding:12px;margin:8px 0;border-radius:6px;border:1px solid #ccc;}
+button{padding:10px 15px;background:#345a9d;border:none;color:white;border-radius:6px;cursor:pointer;font-size:14px;}
+button:hover{background:#274a86;}
+.logout{background:#777;margin-top:15px;}
+.table-container{overflow-x:auto;margin-top:20px;}
+table{width:100%;border-collapse:collapse;min-width:1000px;}
+th{background:#4e81bd;color:white;padding:10px;}
+td{padding:10px;border:1px solid #ddd;text-align:center;}
+select{padding:6px;border-radius:5px;}
+#searchBox{width:100%;padding:12px;border-radius:8px;border:1px solid #ccc;font-size:14px;margin-top:15px;}
+.statBox{background:white;padding:15px;border-radius:10px;width:180px;box-shadow:0 2px 8px rgba(0,0,0,0.1);cursor:pointer;transition:0.3s;}
+.statBox:hover{transform:scale(1.05);}
+.statBox.active{background:#2f528f;color:white;}
+.statBox.active h3{color:white;}
+.statBox h3{margin:0;font-size:28px;color:#2f528f;}
+.statBox p{margin:5px 0 0;font-size:14px;color:#555;}
+.statBox.active p{color:#eee;}
+.footer{margin-top:20px;color:white;font-size:14px;text-align:center;}
+</style>
+</head>
+<body>
+
+<div class="card2" id="loginBox">
+<img src="logo.png" class="logo">
+<h2>🎓 University of East Capital</h2>
+<p>Control Login</p>
+<input id="username" placeholder="Username">
+<input id="password" type="password" placeholder="Password">
+<button onclick="login()">Login</button>
+</div>
+
+<div class="card" id="controlPanel" style="display:none">
+<img src="logo.png" class="logo">
+<h2>Appeals Dashboard</h2>
+
+<div id="stats" style="display:flex;gap:15px;flex-wrap:wrap;margin-top:20px;justify-content:center;">
+<div class="statBox active" id="box_ALL" onclick="filterByStatus('ALL')">
+<h3 id="totalCount">0</h3><p>Total Appeals</p>
+</div>
+<div class="statBox" id="box_Pending" onclick="filterByStatus('Pending')">
+<h3 id="pendingCount">0</h3><p>Pending</p>
+</div>
+<div class="statBox" id="box_UnderReview" onclick="filterByStatus('Under Review')">
+<h3 id="underReviewCount">0</h3><p>Under Review</p>
+</div>
+<div class="statBox" id="box_Revisedwithchange" onclick="filterByStatus('Revised with change')">
+<h3 id="acceptedCount">0</h3><p>Revised with change</p>
+</div>
+<div class="statBox" id="box_Revisedwithoutchange" onclick="filterByStatus('Revised without change')">
+<h3 id="rejectedCount">0</h3><p>Revised without change</p>
+</div>
+</div>
+
+<input id="searchBox" placeholder="Search by Student Name or ID..." onkeyup="filterTable()">
+<button onclick="downloadCSV()">Download Appeals CSV</button>
+
+<div class="table-container">
+<table id="appealsTable"></table>
+</div>
+
+<button class="logout" onclick="logout()">Logout</button>
+</div>
+
+<div class="footer">
+UEC ICT Department<br>
+© 2026 University of East Capital
+</div>
+
+<script>
+const API = window.location.origin + '/api';
+let token = localStorage.getItem('controlToken');
+let allAppealsData = [];
+let currentFilter = 'ALL';
+
+if (token) {
+  document.getElementById('loginBox').style.display = 'none';
+  document.getElementById('controlPanel').style.display = 'block';
+  loadAppeals();
+}
+
+async function login() {
+  const username = document.getElementById('username').value;
+  const password = document.getElementById('password').value;
+
+  const res = await fetch(API + '/auth/account-login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password })
+  });
+
+  const data = await res.json();
+
+  if (res.ok && data.role === 'control') {
+    token = data.token;
+    localStorage.setItem('controlToken', token);
+    document.getElementById('loginBox').style.display = 'none';
+    document.getElementById('controlPanel').style.display = 'block';
+    loadAppeals();
+  } else {
+    alert('Invalid credentials or insufficient permissions');
+  }
+}
+
+async function loadAppeals() {
+  const res = await fetch(API + '/control/appeals', {
+    headers: { 'Authorization': 'Bearer ' + token }
+  });
+
+  if (!res.ok) {
+    localStorage.removeItem('controlToken');
+    location.reload();
+    return;
+  }
+
+  allAppealsData = await res.json();
+  applyCurrentFilter();
+  updateStats(allAppealsData);
+}
+
+function renderTable(data) {
+  const table = document.getElementById('appealsTable');
+  table.innerHTML = '<tr><th>Student ID</th><th>Student Name</th><th>Course</th><th>Reason</th><th>Date</th><th>Status</th><th>Update</th></tr>';
+
+  data.forEach(a => {
+    const row = document.createElement('tr');
+    row.innerHTML = '<td>' + a.student_id + '</td><td>' + a.student_name + '</td><td>' + a.course + '</td><td style="max-width:250px;word-wrap:break-word">' + a.reason + '</td><td>' + new Date(a.date).toLocaleDateString() + '</td><td><select id="status_' + a.id + '"><option value="Pending"' + (a.status === 'Pending' ? ' selected' : '') + '>Pending</option><option value="Under Review"' + (a.status === 'Under Review' ? ' selected' : '') + '>Under Review</option><option value="Revised with change"' + (a.status === 'Revised with change' ? ' selected' : '') + '>Revised with change</option><option value="Revised without change"' + (a.status === 'Revised without change' ? ' selected' : '') + '>Revised without change</option></select></td><td><button onclick="updateStatus(' + a.id + ')">Save</button></td>';
+    table.appendChild(row);
+  });
+}
+
+function updateStats(data) {
+  let total = data.length, pending = 0, underReview = 0, accepted = 0, rejected = 0;
+  data.forEach(a => {
+    if (a.status === 'Pending') pending++;
+    else if (a.status === 'Under Review') underReview++;
+    else if (a.status === 'Revised with change') accepted++;
+    else if (a.status === 'Revised without change') rejected++;
+  });
+  document.getElementById('totalCount').innerText = total;
+  document.getElementById('pendingCount').innerText = pending;
+  document.getElementById('underReviewCount').innerText = underReview;
+  document.getElementById('acceptedCount').innerText = accepted;
+  document.getElementById('rejectedCount').innerText = rejected;
+}
+
+function filterByStatus(status) {
+  currentFilter = status;
+  document.querySelectorAll('.statBox').forEach(el => el.classList.remove('active'));
+  const boxId = 'box_' + status.replace(/ /g, '');
+  document.getElementById(boxId).classList.add('active');
+  applyCurrentFilter();
+}
+
+function applyCurrentFilter() {
+  let data;
+  if (currentFilter === 'ALL') data = allAppealsData;
+  else data = allAppealsData.filter(a => a.status === currentFilter);
+  renderTable(data);
+}
+
+function filterTable() {
+  const input = document.getElementById('searchBox').value.toLowerCase();
+  const rows = document.querySelectorAll('#appealsTable tr');
+  rows.forEach((row, index) => {
+    if (index === 0) return;
+    const id = row.cells[0].innerText.toLowerCase();
+    const name = row.cells[1].innerText.toLowerCase();
+    row.style.display = (id.includes(input) || name.includes(input)) ? '' : 'none';
+  });
+}
+
+async function updateStatus(id) {
+  const sel = document.getElementById('status_' + id);
+  const status = sel.value;
+
+  const res = await fetch(API + '/control/appeal-status', {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + token
+    },
+    body: JSON.stringify({ id, status })
+  });
+
+  const data = await res.json();
+  if (res.ok) {
+    alert('Updated successfully');
+    loadAppeals();
+  } else {
+    alert(data.error || 'Error updating');
+  }
+}
+
+function downloadCSV() {
+  let csv = 'Student ID,Student Name,Course,Reason,Date,Status\n';
+  allAppealsData.forEach(a => {
+    csv += a.student_id + ',' + a.student_name + ',' + a.course + ',' + a.reason + ',' + new Date(a.date).toLocaleDateString() + ',' + a.status + '\n';
+  });
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'UEC_Appeals.csv';
+  a.click();
+}
+
+setInterval(loadAppeals, 30000);
+
+function logout() {
+  localStorage.removeItem('controlToken');
+  location.reload();
+}
+</script>
+</body>
+</html>

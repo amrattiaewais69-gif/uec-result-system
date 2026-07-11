@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UEC Accountant Portal</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;font-family:'Poppins',sans-serif;}
+body{margin:0;background:#2f528f;min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;}
+.card{background:#eee;width:480px;border-radius:12px;padding:30px;text-align:center;}
+.logo{width:90px;margin-bottom:10px;}
+input,select{width:100%;padding:12px;margin:8px 0;border-radius:6px;border:1px solid #ccc;}
+button{width:100%;padding:12px;margin-top:10px;background:#345a9d;border:none;color:white;border-radius:6px;cursor:pointer;font-size:15px;}
+button:hover{background:#274a86;}
+.studentPhoto{width:120px;height:120px;border-radius:50%;margin:auto;display:none;}
+.footer{margin-top:30px;color:white;font-size:14px;text-align:center;}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="card" id="loginBox">
+<img src="logo.png" class="logo">
+<h2>🎓 University of East Capital</h2>
+<p>Accountant Login</p>
+<input id="username" placeholder="Username">
+<input id="password" type="password" placeholder="Password">
+<button onclick="login()">Login</button>
+</div>
+
+<!-- MAIN -->
+<div class="card" id="mainBox" style="display:none">
+<img src="logo.png" class="logo">
+<h2>Record Appeal Payment</h2>
+
+<input id="studentId" placeholder="Student ID">
+<button onclick="loadStudent()">Load Student</button>
+
+<img id="photo" class="studentPhoto">
+<input id="studentName" readonly placeholder="Student Name">
+
+<select id="courseSelect"></select>
+<input id="amount" placeholder="Payment Amount" value="300" readonly>
+
+<button onclick="savePayment()">Save Payment</button>
+<button onclick="exportPayments()">Export Payments Excel</button>
+<button class="logout" onclick="logout()">Logout</button>
+</div>
+
+<div class="footer">
+UEC ICT Department<br>
+© 2026 University of East Capital
+</div>
+
+<script>
+const API = window.location.origin + '/api';
+let token = localStorage.getItem('accountToken');
+let currentStudent = null;
+
+if (token) {
+  document.getElementById('loginBox').style.display = 'none';
+  document.getElementById('mainBox').style.display = 'block';
+}
+
+async function login() {
+  const username = document.getElementById('username').value;
+  const password = document.getElementById('password').value;
+
+  const res = await fetch(API + '/auth/account-login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password })
+  });
+
+  const data = await res.json();
+
+  if (res.ok && data.role === 'accountant') {
+    token = data.token;
+    localStorage.setItem('accountToken', token);
+    document.getElementById('loginBox').style.display = 'none';
+    document.getElementById('mainBox').style.display = 'block';
+  } else {
+    alert('Invalid credentials or insufficient permissions');
+  }
+}
+
+async function loadStudent() {
+  const id = document.getElementById('studentId').value.trim();
+  if (!id) { alert('Enter Student ID'); return; }
+
+  const res = await fetch(API + '/account/student/' + id, {
+    headers: { 'Authorization': 'Bearer ' + token }
+  });
+
+  const data = await res.json();
+
+  if (res.ok) {
+    currentStudent = data;
+    document.getElementById('studentName').value = data.name;
+
+    const photo = document.getElementById('photo');
+    photo.src = 'https://amrattiaewais69-gif.github.io/student-results/photos/' + data.id.replace('-', '') + '.jpg';
+    photo.style.display = 'block';
+
+    const select = document.getElementById('courseSelect');
+    select.innerHTML = '';
+    for (const course of Object.keys(data.courses)) {
+      const option = document.createElement('option');
+      option.value = course;
+      option.text = course;
+      select.appendChild(option);
+    }
+  } else {
+    alert('Student not found');
+  }
+}
+
+async function savePayment() {
+  if (!currentStudent) { alert('Load student first'); return; }
+
+  const course = document.getElementById('courseSelect').value;
+  const amount = document.getElementById('amount').value;
+
+  const res = await fetch(API + '/account/payment', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + token
+    },
+    body: JSON.stringify({ studentId: currentStudent.id, course, amount })
+  });
+
+  const data = await res.json();
+
+  if (res.ok) {
+    alert('Payment saved successfully');
+    document.getElementById('amount').value = '300';
+  } else {
+    alert(data.error || 'Failed to save payment');
+  }
+}
+
+function exportPayments() {
+  window.open(API + '/account/payments/export?token=' + token, '_blank');
+}
+
+function logout() {
+  localStorage.removeItem('accountToken');
+  location.reload();
+}
+</script>
+</body>
+</html>

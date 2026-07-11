@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UEC Result Verification</title>
+<style>
+body{font-family:Arial,sans-serif;background:#2f528f;color:white;text-align:center;padding-top:50px;}
+.card{background:white;color:black;width:500px;margin:auto;padding:30px;border-radius:10px;}
+table{border-collapse:collapse;margin:10px auto;width:90%;}
+table,th,td{border:1px solid black;padding:8px;text-align:center;}
+th{background-color:#4e81bd;color:white;}
+</style>
+</head>
+<body>
+<div class="card">
+<h2>Result Verification</h2>
+<p id="result"></p>
+</div>
+
+<script>
+const API = window.location.origin + '/api';
+const params = new URLSearchParams(window.location.search);
+const id = params.get('id');
+
+if (id) {
+  fetch(API + '/verify/' + id)
+    .then(res => res.json())
+    .then(data => {
+      if (data.error) {
+        document.getElementById('result').innerHTML = 'Result not found';
+        return;
+      }
+
+      let html = '<b>Name:</b> ' + data.name + '<br>';
+      html += '<b>ID:</b> ' + data.id + '<br><br>';
+      html += '<b>Results:</b><br>';
+      html += '<table><tr><th>Course</th><th>Grade</th></tr>';
+
+      for (const [course, grade] of Object.entries(data.courses)) {
+        html += '<tr><td>' + course + '</td><td>' + grade + '</td></tr>';
+      }
+
+      html += '<tr><td><b>GPA</b></td><td><b>' + data.gpa + '</b></td></tr>';
+      html += '</table><br><b>Status:</b> Verified ✔';
+
+      document.getElementById('result').innerHTML = html;
+    })
+    .catch(err => {
+      document.getElementById('result').innerHTML = 'Error connecting to server';
+      console.error(err);
+    });
+} else {
+  document.getElementById('result').innerHTML = 'No ID provided';
+}
+</script>
+</body>
+</html>
