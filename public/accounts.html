@@ -100,7 +100,7 @@ async function loadStudent() {
     document.getElementById('studentName').value = data.name;
 
     const photo = document.getElementById('photo');
-    photo.src = 'https://amrattiaewais69-gif.github.io/student-results/photos/' + data.id.replace('-', '') + '.jpg';
+    photo.src = 'https://amrattiaewais69-gif.github.io/student-results/photos/' + data.id + '.jpg';
     photo.style.display = 'block';
 
     const select = document.getElementById('courseSelect');
