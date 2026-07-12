@@ -72,7 +72,7 @@ router.post('/upload-results', async (req, res) => {
 // Get all accounts
 router.get('/accounts', async (req, res) => {
   try {
-    const result = await pool.query('SELECT username, role, created_at FROM accounts ORDER BY role, username');
+      const result = await pool.query('SELECT username, role FROM accounts ORDER BY role, username');
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
