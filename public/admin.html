@@ -120,6 +120,7 @@ if (token) {
   document.getElementById('adminPanel').style.display = 'block';
   document.getElementById('loggedUser').innerText = 'Logged in as: ' + (localStorage.getItem('adminUsername') || 'admin');
   loadAccounts();
+  loadStudents();
 }
 
 async function login() {
