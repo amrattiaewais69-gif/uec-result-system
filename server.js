@@ -65,6 +65,11 @@ app.use('/api/auth/account-login', loginLimiter);
 // Body parsing
 app.use(express.json());
 
+// Root redirect to login
+app.get('/', (req, res) => {
+  res.redirect('/login.html');
+});
+
 // Static files
 app.use(express.static(path.join(__dirname, 'public')));
 
