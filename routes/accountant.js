@@ -85,9 +85,9 @@ router.get('/payments/export', authenticateToken, requireRole('accountant'), asy
       csv += `${row.student_id},${row.student_name},${row.course},${row.amount},${row.date}\n`;
     });
 
-    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename=UEC_Payments.csv');
-    res.send(csv);
+    res.send('\uFEFF' + csv);
   } catch (err) {
     console.error('Export payments error:', err);
     res.status(500).json({ error: 'Server error' });
