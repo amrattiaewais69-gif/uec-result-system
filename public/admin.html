@@ -58,28 +58,19 @@ td{padding:8px;border:1px solid #ddd;text-align:center;}
 </div>
 
 <div class="section">
-<h3>Manage Accounts</h3>
+<h3>Manage Users</h3>
 <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-bottom:15px;">
-<input id="newUsername" placeholder="Username" style="width:200px;">
-<input id="newPassword" placeholder="Password" style="width:200px;">
-<select id="newRole" style="width:200px;">
+<input id="newUsername" placeholder="Username" style="width:180px;">
+<input id="newPassword" placeholder="Password" style="width:180px;">
+<select id="newRole" style="width:150px;">
 <option value="accountant">Accountant</option>
 <option value="control">Control</option>
 <option value="admin">Admin</option>
 </select>
 <button class="success" onclick="createAccount()">Add Account</button>
 </div>
-<div class="table-container">
-<table id="accountsTable">
-<tr><th>Username</th><th>Role</th><th>Actions</th></tr>
-</table>
-</div>
-</div>
-
-<div class="section">
-<h3>Reset Passwords</h3>
 <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-bottom:15px;">
-<input id="searchUser" placeholder="Search by ID or username..." style="width:300px;" oninput="searchUsers()">
+<input id="searchUser" placeholder="Search by ID, name, or username..." style="width:350px;" oninput="searchUsers()">
 <select id="searchRole" style="width:150px;">
 <option value="all">All</option>
 <option value="student">Students</option>
@@ -95,11 +86,8 @@ td{padding:8px;border:1px solid #ddd;text-align:center;}
 </div>
 <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:15px;">
 <button onclick="resetAllStudents()">Reset All Student Passwords</button>
-<button onclick="resetAccountPassword('mohamed')">Reset Accountant (mohamed)</button>
-<button onclick="resetAccountPassword('amr')">Reset Control (amr)</button>
 </div>
 <p style="font-size:13px;color:#666;text-align:center;">Student default password = their student ID (e.g. 25100001)</p>
-<p style="font-size:13px;color:#666;text-align:center;">Accountant: Mohamed1 | Control: Abdelrahman1</p>
 </div>
 
 <button class="logout" onclick="logout()">Logout</button>
@@ -211,16 +199,6 @@ async function loadAccounts() {
 
   if (!res.ok) return;
   allAccounts = await res.json();
-
-  const table = document.getElementById('accountsTable');
-  table.innerHTML = '<tr><th>Username</th><th>Role</th><th>Actions</th></tr>';
-  allAccounts.forEach(a => {
-    const canDelete = a.username !== 'amr' && a.username !== 'mohamed';
-    table.innerHTML += '<tr><td>' + a.username + '</td><td>' + a.role + '</td><td>' +
-      '<button onclick="resetAccountPassword(\'' + a.username + '\')">Reset Pass</button>' +
-      (canDelete ? ' <button class="danger" onclick="deleteAccount(\'' + a.username + '\')">Delete</button>' : '') +
-      '</td></tr>';
-  });
 }
 
 async function createAccount() {
@@ -244,23 +222,6 @@ async function createAccount() {
     alert('Account created');
     document.getElementById('newUsername').value = '';
     document.getElementById('newPassword').value = '';
-    loadAccounts();
-  } else {
-    alert(data.error || 'Failed');
-  }
-}
-
-async function deleteAccount(username) {
-  if (!confirm('Delete account "' + username + '"?')) return;
-
-  const res = await fetch(API + '/admin/accounts/' + username, {
-    method: 'DELETE',
-    headers: { 'Authorization': 'Bearer ' + token }
-  });
-
-  const data = await res.json();
-  if (res.ok) {
-    alert('Deleted');
     loadAccounts();
   } else {
     alert(data.error || 'Failed');
@@ -339,8 +300,31 @@ function searchUsers() {
       return a.username.toLowerCase().includes(query) || a.role.toLowerCase().includes(query);
     }).forEach(a => {
       table.innerHTML += '<tr><td>' + a.username + '</td><td>-</td><td>' + a.role + '</td><td>' +
-        '<button onclick="resetAccountPassword(\'' + a.username + '\')">Reset Pass</button></td></tr>';
+        '<button onclick="resetAccountPassword(\'' + a.username + '\')">Reset Pass</button> ' +
+        '<button class="danger" onclick="deleteAccountWithConfirm(\'' + a.username + '\')">Delete</button></td></tr>';
     });
+  }
+}
+
+async function deleteAccountWithConfirm(username) {
+  const entered = prompt('Type the username "' + username + '" to confirm deletion:');
+  if (entered !== username) {
+    alert('Deletion cancelled — username did not match');
+    return;
+  }
+
+  const res = await fetch(API + '/admin/accounts/' + username, {
+    method: 'DELETE',
+    headers: { 'Authorization': 'Bearer ' + token }
+  });
+
+  const data = await res.json();
+  if (res.ok) {
+    alert('Deleted');
+    loadAccounts();
+    searchUsers();
+  } else {
+    alert(data.error || 'Failed');
   }
 }
 
