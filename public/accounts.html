@@ -136,6 +136,7 @@ async function savePayment() {
   if (res.ok) {
     alert('Payment saved successfully');
     document.getElementById('amount').value = '300';
+    loadStudent();
   } else {
     alert(data.error || 'Failed to save payment');
   }

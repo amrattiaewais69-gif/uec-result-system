@@ -50,7 +50,7 @@ router.get('/results', authenticateToken, async (req, res) => {
   }
 });
 
-// Get available courses for appeal
+// Get available courses for appeal (only paid courses without existing appeal)
 router.get('/appeal-courses', authenticateToken, async (req, res) => {
   try {
     const studentId = req.user.id;
@@ -64,7 +64,14 @@ router.get('/appeal-courses', authenticateToken, async (req, res) => {
     }
 
     const result = await pool.query(
-      "SELECT course FROM results WHERE student_id = $1 AND grade = 'F'",
+      `SELECT p.course FROM payments p
+       WHERE p.student_id = $1
+       AND NOT EXISTS (
+         SELECT 1 FROM appeals a
+         WHERE a.student_id = $1 AND a.course = p.course
+         AND a.status NOT IN ('Revised without change')
+       )
+       ORDER BY p.course`,
       [studentId]
     );
 

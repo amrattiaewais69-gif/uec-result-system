@@ -15,7 +15,13 @@ router.get('/student/:id', authenticateToken, requireRole('accountant'), async (
     }
 
     const coursesResult = await pool.query(
-      "SELECT course, grade FROM results WHERE student_id = $1 ORDER BY course",
+      `SELECT r.course, r.grade FROM results r
+       WHERE r.student_id = $1
+       AND NOT EXISTS (
+         SELECT 1 FROM payments p
+         WHERE p.student_id = $1 AND p.course = r.course
+       )
+       ORDER BY r.course`,
       [id]
     );
 
@@ -71,7 +77,7 @@ router.post('/payment', authenticateToken, requireRole('accountant'), async (req
 router.get('/payments/export', authenticateToken, requireRole('accountant'), async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT student_id, student_name, course, amount, date::text FROM payments ORDER BY date DESC'
+      'SELECT student_id, student_name, course, amount, TO_CHAR(date, \'YYYY-MM-DD HH24:MI:SS\') as date FROM payments ORDER BY date DESC'
     );
 
     let csv = 'Student ID,Student Name,Course,Amount,Date\n';
