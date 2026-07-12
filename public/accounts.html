@@ -141,8 +141,22 @@ async function savePayment() {
   }
 }
 
-function exportPayments() {
-  window.open(API + '/account/payments/export?token=' + token, '_blank');
+async function exportPayments() {
+  try {
+    const res = await fetch(API + '/account/payments/export', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if (!res.ok) { alert('Export failed'); return; }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'UEC_Payments.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    alert('Export failed');
+  }
 }
 
 function logout() {

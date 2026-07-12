@@ -15,7 +15,7 @@ router.get('/student/:id', authenticateToken, requireRole('accountant'), async (
     }
 
     const coursesResult = await pool.query(
-      "SELECT course, grade FROM results WHERE student_id = $1 AND grade = 'F'",
+      "SELECT course, grade FROM results WHERE student_id = $1 ORDER BY course",
       [id]
     );
 

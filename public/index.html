@@ -65,7 +65,7 @@ UEC ICT Department<br>
 © 2026 University of East Capital
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 <script>
 const API = window.location.origin + '/api';
 let studentData = null;
@@ -182,41 +182,50 @@ async function changePassword() {
 function downloadPDF() {
   if (!studentData) return;
 
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
-
-  doc.setFontSize(20);
-  doc.text('University of East Capital', 105, 20, { align: 'center' });
-  doc.setFontSize(14);
-  doc.text('Student Result Statement', 105, 30, { align: 'center' });
-
-  doc.setFontSize(12);
-  doc.text('Name: ' + studentData.name, 20, 50);
-  doc.text('Student ID: ' + studentData.id, 20, 60);
-  doc.text('GPA: ' + studentData.gpa, 20, 70);
-
-  let y = 90;
-  doc.setFontSize(11);
-  doc.text('Course', 20, y);
-  doc.text('Grade', 150, y);
-  y += 5;
-  doc.line(20, y, 190, y);
-  y += 10;
-
-  for (const [course, grade] of Object.entries(studentData.courses)) {
-    doc.text(course, 20, y);
-    doc.text(grade, 150, y);
-    y += 10;
+  if (typeof window.jspdf === 'undefined') {
+    alert('PDF library is loading, please try again in a moment');
+    return;
   }
 
-  y += 10;
-  doc.setFontSize(12);
-  doc.text('Verified by UEC', 105, y, { align: 'center' });
-  y += 10;
-  doc.setFontSize(10);
-  doc.text('This document is digitally generated and does not require a signature.', 105, y, { align: 'center' });
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
 
-  doc.save('UEC_Result_' + studentData.id + '.pdf');
+    doc.setFontSize(20);
+    doc.text('University of East Capital', 105, 20, { align: 'center' });
+    doc.setFontSize(14);
+    doc.text('Student Result Statement', 105, 30, { align: 'center' });
+
+    doc.setFontSize(12);
+    doc.text('Name: ' + studentData.name, 20, 50);
+    doc.text('Student ID: ' + studentData.id, 20, 60);
+    doc.text('GPA: ' + studentData.gpa, 20, 70);
+
+    let y = 90;
+    doc.setFontSize(11);
+    doc.text('Course', 20, y);
+    doc.text('Grade', 150, y);
+    y += 5;
+    doc.line(20, y, 190, y);
+    y += 10;
+
+    for (const [course, grade] of Object.entries(studentData.courses)) {
+      doc.text(course, 20, y);
+      doc.text(grade, 150, y);
+      y += 10;
+    }
+
+    y += 10;
+    doc.setFontSize(12);
+    doc.text('Verified by UEC', 105, y, { align: 'center' });
+    y += 10;
+    doc.setFontSize(10);
+    doc.text('This document is digitally generated and does not require a signature.', 105, y, { align: 'center' });
+
+    doc.save('UEC_Result_' + studentData.id + '.pdf');
+  } catch (err) {
+    alert('Error generating PDF: ' + err.message);
+  }
 }
 
 function logout() {
