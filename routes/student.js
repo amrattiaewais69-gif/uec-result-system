@@ -55,9 +55,14 @@ router.get('/appeal-courses', authenticateToken, async (req, res) => {
   try {
     const studentId = req.user.id;
 
-    const settings = await pool.query("SELECT value FROM settings WHERE key = 'appeal_deadline'");
-    if (settings.rows.length > 0) {
-      const deadline = new Date(settings.rows[0].value);
+    const settings = await pool.query("SELECT value FROM settings WHERE key = 'appeals_open'");
+    if (settings.rows.length > 0 && settings.rows[0].value !== 'true') {
+      return res.json({ status: 'closed', message: 'Appeals are currently closed by administration' });
+    }
+
+    const deadlineResult = await pool.query("SELECT value FROM settings WHERE key = 'appeal_deadline'");
+    if (deadlineResult.rows.length > 0) {
+      const deadline = new Date(deadlineResult.rows[0].value);
       if (new Date() > deadline) {
         return res.json({ status: 'closed', message: 'Appeal deadline has passed' });
       }
@@ -109,6 +114,11 @@ router.post('/appeal', authenticateToken, async (req, res) => {
 
     if (!course || !reason) {
       return res.status(400).json({ error: 'Course and reason required' });
+    }
+
+    const openResult = await pool.query("SELECT value FROM settings WHERE key = 'appeals_open'");
+    if (openResult.rows.length > 0 && openResult.rows[0].value !== 'true') {
+      return res.status(400).json({ error: 'Appeals are currently closed by administration' });
     }
 
     const settings = await pool.query("SELECT value FROM settings WHERE key = 'appeal_deadline'");

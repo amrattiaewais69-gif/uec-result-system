@@ -250,4 +250,38 @@ router.get('/students', async (req, res) => {
   }
 });
 
+// Get appeal settings
+router.get('/settings', async (req, res) => {
+  try {
+    const result = await pool.query("SELECT key, value FROM settings WHERE key IN ('appeals_open', 'appeal_deadline')");
+    const settings = {};
+    result.rows.forEach(r => settings[r.key] = r.value);
+    res.json(settings);
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Update appeal settings
+router.put('/settings', async (req, res) => {
+  try {
+    const { appeals_open, appeal_deadline } = req.body;
+    if (appeals_open !== undefined) {
+      await pool.query(
+        "INSERT INTO settings (key, value) VALUES ('appeals_open', $1) ON CONFLICT (key) DO UPDATE SET value = $1",
+        [appeals_open]
+      );
+    }
+    if (appeal_deadline !== undefined) {
+      await pool.query(
+        "INSERT INTO settings (key, value) VALUES ('appeal_deadline', $1) ON CONFLICT (key) DO UPDATE SET value = $1",
+        [appeal_deadline]
+      );
+    }
+    res.json({ message: 'Settings updated' });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 module.exports = router;

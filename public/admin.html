@@ -66,6 +66,14 @@ td{padding:8px;border:1px solid #ddd;text-align:center;}
 </div>
 
 <div class="section">
+<h3>Appeal Settings</h3>
+<div style="display:flex;align-items:center;justify-content:center;gap:15px;flex-wrap:wrap;">
+<span id="appealStatus" style="font-size:16px;font-weight:600;"></span>
+<button id="appealToggle" onclick="toggleAppeals()" style="padding:12px 24px;font-size:15px;font-weight:600;border:none;color:white;border-radius:6px;cursor:pointer;"></button>
+</div>
+</div>
+
+<div class="section">
 <h3>Manage Users</h3>
 <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-bottom:15px;">
 <input id="newDisplayName" placeholder="Display Name" style="width:150px;">
@@ -133,6 +141,7 @@ if (token) {
   document.getElementById('loggedUser').innerText = 'Logged in as: ' + (localStorage.getItem('adminUsername') || 'admin');
   loadAccounts();
   loadStudents();
+  loadAppealSettings();
 }
 
 async function login() {
@@ -348,6 +357,57 @@ async function saveEdit() {
     searchUsers();
   } else {
     alert(data.error || 'Update failed');
+  }
+}
+
+let appealsOpen = false;
+
+async function loadAppealSettings() {
+  try {
+    const res = await fetch(API + '/admin/settings', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      appealsOpen = data.appeals_open === 'true';
+      updateAppealUI();
+    }
+  } catch (err) {}
+}
+
+function updateAppealUI() {
+  const statusEl = document.getElementById('appealStatus');
+  const toggleBtn = document.getElementById('appealToggle');
+  if (appealsOpen) {
+    statusEl.innerHTML = 'Status: <span style="color:#27ae60">OPEN</span>';
+    toggleBtn.style.background = '#c0392b';
+    toggleBtn.innerText = 'Close Appeals';
+  } else {
+    statusEl.innerHTML = 'Status: <span style="color:#c0392b">CLOSED</span>';
+    toggleBtn.style.background = '#27ae60';
+    toggleBtn.innerText = 'Open Appeals';
+  }
+}
+
+async function toggleAppeals() {
+  appealsOpen = !appealsOpen;
+  try {
+    const res = await fetch(API + '/admin/settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ appeals_open: appealsOpen ? 'true' : 'false' })
+    });
+    if (res.ok) {
+      updateAppealUI();
+    } else {
+      appealsOpen = !appealsOpen;
+      updateAppealUI();
+      alert('Failed to update');
+    }
+  } catch (err) {
+    appealsOpen = !appealsOpen;
+    updateAppealUI();
+    alert('Failed to update');
   }
 }
 
