@@ -30,6 +30,14 @@ td{padding:8px;border:1px solid #ddd;text-align:center;}
 .file-label{display:inline-block;padding:10px 20px;background:#345a9d;color:white;border-radius:6px;cursor:pointer;margin:10px 0;}
 .file-label:hover{background:#274a86;}
 .footer{margin-top:20px;color:white;font-size:14px;text-align:center;}
+.modal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;justify-content:center;align-items:center;}
+.modal-overlay.active{display:flex;}
+.modal{background:white;padding:25px;border-radius:10px;width:400px;text-align:left;}
+.modal h3{margin-top:0;color:#345a9d;}
+.modal input,.modal select{width:100%;padding:10px;margin:6px 0;border-radius:6px;border:1px solid #ccc;}
+.modal button{padding:10px 18px;border:none;color:white;border-radius:6px;cursor:pointer;font-size:14px;margin:4px;}
+.modal .save{background:#345a9d;}
+.modal .cancel{background:#777;}
 </style>
 </head>
 <body>
@@ -96,6 +104,17 @@ td{padding:8px;border:1px solid #ddd;text-align:center;}
 <div class="footer">
 Designed by UEC ICT Department<br>
 © 2026 University of East Capital
+</div>
+
+<div class="modal-overlay" id="editModal">
+<div class="modal">
+<h3 id="editTitle">Edit User</h3>
+<div id="editFields"></div>
+<div style="text-align:right;margin-top:15px;">
+<button class="save" onclick="saveEdit()">Save</button>
+<button class="cancel" onclick="closeEdit()">Cancel</button>
+</div>
+</div>
 </div>
 
 <script>
@@ -261,6 +280,71 @@ async function resetAllStudents() {
   alert(data.message || data.error);
 }
 
+let editType = '';
+let editOriginalId = '';
+
+function openEditStudent(id, name) {
+  editType = 'student';
+  editOriginalId = id;
+  document.getElementById('editTitle').innerText = 'Edit Student';
+  document.getElementById('editFields').innerHTML =
+    '<label><b>Student ID</b></label><input id="editId" value="' + id + '">' +
+    '<label><b>Name</b></label><input id="editName" value="' + name + '">';
+  document.getElementById('editModal').classList.add('active');
+}
+
+function openEditAccount(username, role) {
+  editType = 'account';
+  editOriginalId = username;
+  document.getElementById('editTitle').innerText = 'Edit Account';
+  let roleOptions = '';
+  ['accountant', 'control', 'admin'].forEach(r => {
+    roleOptions += '<option value="' + r + '"' + (r === role ? ' selected' : '') + '>' + r + '</option>';
+  });
+  document.getElementById('editFields').innerHTML =
+    '<label><b>Username</b></label><input id="editUsername" value="' + username + '">' +
+    '<label><b>Role</b></label><select id="editRole">' + roleOptions + '</select>';
+  document.getElementById('editModal').classList.add('active');
+}
+
+function closeEdit() {
+  document.getElementById('editModal').classList.remove('active');
+}
+
+async function saveEdit() {
+  let res;
+  if (editType === 'student') {
+    const newId = document.getElementById('editId').value.trim();
+    const name = document.getElementById('editName').value.trim();
+    if (!newId || !name) { alert('ID and Name are required'); return; }
+    res = await fetch(API + '/admin/students/' + editOriginalId, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ newId, name })
+    });
+  } else if (editType === 'account') {
+    const newUsername = document.getElementById('editUsername').value.trim();
+    const role = document.getElementById('editRole').value;
+    if (!newUsername) { alert('Username is required'); return; }
+    res = await fetch(API + '/admin/accounts/' + editOriginalId, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ newUsername, role })
+    });
+  }
+
+  const data = await res.json();
+  if (res.ok) {
+    alert('Updated successfully');
+    closeEdit();
+    loadStudents();
+    loadAccounts();
+    searchUsers();
+  } else {
+    alert(data.error || 'Update failed');
+  }
+}
+
 function logout() {
   localStorage.removeItem('adminToken');
   localStorage.removeItem('adminUsername');
@@ -290,6 +374,7 @@ function searchUsers() {
   if (roleFilter === 'all' || roleFilter === 'student') {
     allStudents.filter(s => s.id.toLowerCase().includes(query) || s.name.toLowerCase().includes(query)).forEach(s => {
       table.innerHTML += '<tr><td>' + s.id + '</td><td>' + s.name + '</td><td>Student</td><td>' +
+        '<button onclick="openEditStudent(\'' + s.id + '\',\'' + s.name.replace(/'/g, "\\'") + '\')">Edit</button> ' +
         '<button onclick="resetStudentPassword(\'' + s.id + '\')">Reset Pass</button></td></tr>';
     });
   }
@@ -300,6 +385,7 @@ function searchUsers() {
       return a.username.toLowerCase().includes(query) || a.role.toLowerCase().includes(query);
     }).forEach(a => {
       table.innerHTML += '<tr><td>' + a.username + '</td><td>-</td><td>' + a.role + '</td><td>' +
+        '<button onclick="openEditAccount(\'' + a.username + '\',\'' + a.role + '\')">Edit</button> ' +
         '<button onclick="resetAccountPassword(\'' + a.username + '\')">Reset Pass</button> ' +
         '<button class="danger" onclick="deleteAccountWithConfirm(\'' + a.username + '\')">Delete</button></td></tr>';
     });

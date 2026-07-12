@@ -79,6 +79,67 @@ router.get('/accounts', async (req, res) => {
   }
 });
 
+// Edit student
+router.put('/students/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, newId } = req.body;
+    if (!name && !newId) {
+      return res.status(400).json({ error: 'Nothing to update' });
+    }
+
+    if (newId && newId !== id) {
+      const existing = await pool.query('SELECT id FROM students WHERE id = $1', [newId]);
+      if (existing.rows.length > 0) {
+        return res.status(400).json({ error: 'Student ID already exists' });
+      }
+      await pool.query('UPDATE students SET id = $1 WHERE id = $2', [newId, id]);
+      await pool.query('UPDATE results SET student_id = $1 WHERE student_id = $2', [newId, id]);
+      await pool.query('UPDATE appeals SET student_id = $1 WHERE student_id = $2', [newId, id]);
+      await pool.query('UPDATE payments SET student_id = $1 WHERE student_id = $2', [newId, id]);
+    }
+
+    const targetId = newId || id;
+    if (name) {
+      await pool.query('UPDATE students SET name = $1 WHERE id = $2', [name, targetId]);
+    }
+
+    res.json({ message: 'Student updated successfully' });
+  } catch (err) {
+    console.error('Edit student error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Edit account
+router.put('/accounts/:username', async (req, res) => {
+  try {
+    const { username } = req.params;
+    const { newUsername, role } = req.body;
+    if (!newUsername && !role) {
+      return res.status(400).json({ error: 'Nothing to update' });
+    }
+
+    if (newUsername && newUsername !== username) {
+      const existing = await pool.query('SELECT username FROM accounts WHERE username = $1', [newUsername]);
+      if (existing.rows.length > 0) {
+        return res.status(400).json({ error: 'Username already exists' });
+      }
+      await pool.query('UPDATE accounts SET username = $1 WHERE username = $2', [newUsername, username]);
+    }
+
+    const targetUsername = newUsername || username;
+    if (role) {
+      await pool.query('UPDATE accounts SET role = $1 WHERE username = $2', [role, targetUsername]);
+    }
+
+    res.json({ message: 'Account updated successfully' });
+  } catch (err) {
+    console.error('Edit account error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Create new account
 router.post('/accounts', async (req, res) => {
   try {
