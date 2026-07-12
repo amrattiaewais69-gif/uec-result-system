@@ -72,7 +72,7 @@ router.post('/upload-results', async (req, res) => {
 // Get all accounts
 router.get('/accounts', async (req, res) => {
   try {
-      const result = await pool.query('SELECT username, role FROM accounts ORDER BY role, username');
+      const result = await pool.query('SELECT username, role, display_name FROM accounts ORDER BY role, username');
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
@@ -115,8 +115,8 @@ router.put('/students/:id', async (req, res) => {
 router.put('/accounts/:username', async (req, res) => {
   try {
     const { username } = req.params;
-    const { newUsername, role } = req.body;
-    if (!newUsername && !role) {
+    const { newUsername, role, display_name } = req.body;
+    if (!newUsername && !role && display_name === undefined) {
       return res.status(400).json({ error: 'Nothing to update' });
     }
 
@@ -132,6 +132,9 @@ router.put('/accounts/:username', async (req, res) => {
     if (role) {
       await pool.query('UPDATE accounts SET role = $1 WHERE username = $2', [role, targetUsername]);
     }
+    if (display_name !== undefined) {
+      await pool.query('UPDATE accounts SET display_name = $1 WHERE username = $2', [display_name, targetUsername]);
+    }
 
     res.json({ message: 'Account updated successfully' });
   } catch (err) {
@@ -143,7 +146,7 @@ router.put('/accounts/:username', async (req, res) => {
 // Create new account
 router.post('/accounts', async (req, res) => {
   try {
-    const { username, password, role } = req.body;
+    const { username, password, role, display_name } = req.body;
     if (!username || !password || !role) {
       return res.status(400).json({ error: 'Username, password, and role required' });
     }
@@ -159,7 +162,7 @@ router.post('/accounts', async (req, res) => {
     }
 
     const hash = await bcrypt.hash(password, 10);
-    await pool.query('INSERT INTO accounts (username, password_hash, role) VALUES ($1, $2, $3)', [username, hash, role]);
+    await pool.query('INSERT INTO accounts (username, password_hash, role, display_name) VALUES ($1, $2, $3, $4)', [username, hash, role, display_name || '']);
     res.json({ message: 'Account created successfully' });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });

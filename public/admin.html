@@ -68,9 +68,10 @@ td{padding:8px;border:1px solid #ddd;text-align:center;}
 <div class="section">
 <h3>Manage Users</h3>
 <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-bottom:15px;">
-<input id="newUsername" placeholder="Username" style="width:180px;">
-<input id="newPassword" placeholder="Password" style="width:180px;">
-<select id="newRole" style="width:150px;">
+<input id="newDisplayName" placeholder="Display Name" style="width:150px;">
+<input id="newUsername" placeholder="Username" style="width:150px;">
+<input id="newPassword" placeholder="Password" style="width:150px;">
+<select id="newRole" style="width:130px;">
 <option value="accountant">Accountant</option>
 <option value="control">Control</option>
 <option value="admin">Admin</option>
@@ -224,6 +225,7 @@ async function createAccount() {
   const username = document.getElementById('newUsername').value.trim();
   const password = document.getElementById('newPassword').value;
   const role = document.getElementById('newRole').value;
+  const display_name = document.getElementById('newDisplayName').value.trim();
 
   if (!username || !password) { alert('Enter username and password'); return; }
 
@@ -233,7 +235,7 @@ async function createAccount() {
       'Content-Type': 'application/json',
       'Authorization': 'Bearer ' + token
     },
-    body: JSON.stringify({ username, password, role })
+    body: JSON.stringify({ username, password, role, display_name })
   });
 
   const data = await res.json();
@@ -293,7 +295,7 @@ function openEditStudent(id, name) {
   document.getElementById('editModal').classList.add('active');
 }
 
-function openEditAccount(username, role) {
+function openEditAccount(username, role, displayName) {
   editType = 'account';
   editOriginalId = username;
   document.getElementById('editTitle').innerText = 'Edit Account';
@@ -302,6 +304,7 @@ function openEditAccount(username, role) {
     roleOptions += '<option value="' + r + '"' + (r === role ? ' selected' : '') + '>' + r + '</option>';
   });
   document.getElementById('editFields').innerHTML =
+    '<label><b>Display Name</b></label><input id="editDisplayName" value="' + (displayName || '') + '">' +
     '<label><b>Username</b></label><input id="editUsername" value="' + username + '">' +
     '<label><b>Role</b></label><select id="editRole">' + roleOptions + '</select>';
   document.getElementById('editModal').classList.add('active');
@@ -325,11 +328,12 @@ async function saveEdit() {
   } else if (editType === 'account') {
     const newUsername = document.getElementById('editUsername').value.trim();
     const role = document.getElementById('editRole').value;
+    const display_name = document.getElementById('editDisplayName').value.trim();
     if (!newUsername) { alert('Username is required'); return; }
     res = await fetch(API + '/admin/accounts/' + editOriginalId, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-      body: JSON.stringify({ newUsername, role })
+      body: JSON.stringify({ newUsername, role, display_name })
     });
   }
 
@@ -384,8 +388,8 @@ function searchUsers() {
       if (roleFilter !== 'all' && a.role !== roleFilter) return false;
       return a.username.toLowerCase().includes(query) || a.role.toLowerCase().includes(query);
     }).forEach(a => {
-      table.innerHTML += '<tr><td>' + a.username + '</td><td>-</td><td>' + a.role + '</td><td>' +
-        '<button onclick="openEditAccount(\'' + a.username + '\',\'' + a.role + '\')">Edit</button> ' +
+      table.innerHTML += '<tr><td>' + a.username + '</td><td>' + (a.display_name || '-') + '</td><td>' + a.role + '</td><td>' +
+        '<button onclick="openEditAccount(\'' + a.username + '\',\'' + a.role + '\',\'' + (a.display_name || '').replace(/'/g, "\\'") + '\')">Edit</button> ' +
         '<button onclick="resetAccountPassword(\'' + a.username + '\')">Reset Pass</button> ' +
         '<button class="danger" onclick="deleteAccountWithConfirm(\'' + a.username + '\')">Delete</button></td></tr>';
     });

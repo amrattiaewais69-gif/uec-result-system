@@ -61,7 +61,8 @@ async function seed() {
       CREATE TABLE IF NOT EXISTS accounts (
         username TEXT PRIMARY KEY,
         password_hash TEXT NOT NULL,
-        role TEXT NOT NULL
+        role TEXT NOT NULL,
+        display_name TEXT DEFAULT ''
       )
     `);
 
