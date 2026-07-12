@@ -31,7 +31,9 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: function(origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (!origin) return callback(null, true);
+    const clean = origin.replace(/^https?:\/\//, '');
+    if (allowedOrigins.some(o => clean === o || clean.startsWith(o))) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
