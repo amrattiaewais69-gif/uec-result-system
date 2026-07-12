@@ -79,6 +79,19 @@ td{padding:8px;border:1px solid #ddd;text-align:center;}
 <div class="section">
 <h3>Reset Passwords</h3>
 <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-bottom:15px;">
+<input id="searchUser" placeholder="Search by ID or username..." style="width:300px;" oninput="searchUsers()">
+<select id="searchRole" style="width:150px;">
+<option value="all">All</option>
+<option value="student">Students</option>
+<option value="account">Accounts</option>
+</select>
+</div>
+<div class="table-container">
+<table id="searchResults">
+<tr><th>ID / Username</th><th>Name</th><th>Type</th><th>Actions</th></tr>
+</table>
+</div>
+<div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:15px;">
 <button onclick="resetAllStudents()">Reset All Student Passwords</button>
 <button onclick="resetAccountPassword('mohamed')">Reset Accountant (mohamed)</button>
 <button onclick="resetAccountPassword('amr')">Reset Control (amr)</button>
@@ -99,6 +112,8 @@ Designed by UEC ICT Department<br>
 const API = window.location.origin + '/api';
 let token = localStorage.getItem('adminToken');
 let csvData = null;
+let allStudents = [];
+let allAccounts = [];
 
 if (token) {
   document.getElementById('loginBox').style.display = 'none';
@@ -127,6 +142,7 @@ async function login() {
     document.getElementById('adminPanel').style.display = 'block';
     document.getElementById('loggedUser').innerText = 'Logged in as: ' + data.username;
     loadAccounts();
+    loadStudents();
   } else {
     alert('Invalid credentials or insufficient permissions');
   }
@@ -191,11 +207,11 @@ async function loadAccounts() {
   });
 
   if (!res.ok) return;
-  const data = await res.json();
+  allAccounts = await res.json();
 
   const table = document.getElementById('accountsTable');
   table.innerHTML = '<tr><th>Username</th><th>Role</th><th>Actions</th></tr>';
-  data.forEach(a => {
+  allAccounts.forEach(a => {
     const canDelete = a.username !== 'amr' && a.username !== 'mohamed';
     table.innerHTML += '<tr><td>' + a.username + '</td><td>' + a.role + '</td><td>' +
       '<button onclick="resetAccountPassword(\'' + a.username + '\')">Reset Pass</button>' +
@@ -285,6 +301,58 @@ function logout() {
   localStorage.removeItem('adminToken');
   localStorage.removeItem('adminUsername');
   location.reload();
+}
+
+async function loadStudents() {
+  const res = await fetch(API + '/admin/students', {
+    headers: { 'Authorization': 'Bearer ' + token }
+  });
+  if (res.ok) {
+    allStudents = await res.json();
+  }
+}
+
+function searchUsers() {
+  const query = document.getElementById('searchUser').value.toLowerCase().trim();
+  const roleFilter = document.getElementById('searchRole').value;
+  const table = document.getElementById('searchResults');
+  table.innerHTML = '<tr><th>ID / Username</th><th>Name</th><th>Type</th><th>Actions</th></tr>';
+
+  if (!query) {
+    table.innerHTML += '<tr><td colspan="4" style="color:#999;">Type to search...</td></tr>';
+    return;
+  }
+
+  if (roleFilter === 'all' || roleFilter === 'student') {
+    allStudents.filter(s => s.id.toLowerCase().includes(query) || s.name.toLowerCase().includes(query)).forEach(s => {
+      table.innerHTML += '<tr><td>' + s.id + '</td><td>' + s.name + '</td><td>Student</td><td>' +
+        '<button onclick="resetStudentPassword(\'' + s.id + '\')">Reset Pass</button></td></tr>';
+    });
+  }
+
+  if (roleFilter === 'all' || roleFilter === 'account') {
+    allAccounts.filter(a => a.username.toLowerCase().includes(query) || a.role.toLowerCase().includes(query)).forEach(a => {
+      table.innerHTML += '<tr><td>' + a.username + '</td><td>-</td><td>' + a.role + '</td><td>' +
+        '<button onclick="resetAccountPassword(\'' + a.username + '\')">Reset Pass</button></td></tr>';
+    });
+  }
+}
+
+async function resetStudentPassword(studentId) {
+  const defaultPass = studentId.replace('-', '');
+  if (!confirm('Reset password for ' + studentId + ' to ' + defaultPass + '?')) return;
+
+  const res = await fetch(API + '/admin/students/' + studentId + '/reset-password', {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + token
+    },
+    body: JSON.stringify({ newPassword: defaultPass })
+  });
+
+  const data = await res.json();
+  alert(data.message || data.error);
 }
 </script>
 </body>
