@@ -87,6 +87,8 @@ let token = localStorage.getItem('controlToken');
 let allAppealsData = [];
 let currentFilter = 'ALL';
 
+if (!token) { location.href = 'login.html'; }
+
 if (token) {
   document.getElementById('loginBox').style.display = 'none';
   document.getElementById('controlPanel').style.display = 'block';
@@ -226,7 +228,8 @@ setInterval(loadAppeals, 30000);
 
 function logout() {
   localStorage.removeItem('controlToken');
-  location.reload();
+  localStorage.removeItem('controlUsername');
+  location.href = 'login.html';
 }
 </script>
 </body>

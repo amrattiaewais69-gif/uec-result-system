@@ -73,10 +73,19 @@ const API = window.location.origin + '/api';
 let currentStudent = null;
 let token = localStorage.getItem('resultToken');
 
+if (!token) { location.href = 'login.html'; }
+
 if (token) {
-  document.getElementById('loginBox').style.display = 'none';
-  document.getElementById('loadingBox').style.display = 'block';
-  loadResults();
+  if (localStorage.getItem('firstLogin') === '1') {
+    localStorage.removeItem('firstLogin');
+    document.getElementById('loginBox').style.display = 'none';
+    document.getElementById('loadingBox').style.display = 'none';
+    showFirstLoginCard();
+  } else {
+    document.getElementById('loginBox').style.display = 'none';
+    document.getElementById('loadingBox').style.display = 'block';
+    loadResults();
+  }
 }
 
 async function login() {
@@ -144,7 +153,7 @@ async function submitNewPassword() {
     if (res.ok) {
       alert('Password updated successfully. Please login again.');
       localStorage.clear();
-      location.reload();
+      location.href = 'login.html';
     } else {
       alert(data.error || 'Error updating password. Try again.');
     }
@@ -162,7 +171,7 @@ async function loadResults() {
     if (!res.ok) {
       localStorage.removeItem('resultToken');
       localStorage.removeItem('student');
-      location.reload();
+      location.href = 'login.html';
       return;
     }
 
@@ -190,7 +199,7 @@ async function loadResults() {
 }
 
 function openAppeal() { window.location = 'appeal.html'; }
-function logout() { localStorage.clear(); location.reload(); }
+function logout() { localStorage.clear(); location.href = 'login.html'; }
 
 async function downloadPDF() {
   if (!currentStudent) {

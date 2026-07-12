@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UEC Login</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;font-family:'Poppins',sans-serif;}
+body{margin:0;background:#2f528f;min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;}
+.card{background:#eee;width:420px;border-radius:12px;padding:30px;text-align:center;}
+.logo{width:90px;margin-bottom:10px;}
+input,select{width:100%;padding:12px;margin:8px 0;border-radius:6px;border:1px solid #ccc;font-size:14px;}
+button{width:100%;padding:12px;margin-top:10px;background:#345a9d;border:none;color:white;border-radius:6px;cursor:pointer;font-size:15px;}
+button:hover{background:#274a86;}
+.footer{margin-top:30px;color:white;font-size:14px;text-align:center;}
+.links{margin-top:15px;font-size:13px;}
+.links a{color:white;text-decoration:none;}
+.links a:hover{text-decoration:underline;}
+</style>
+</head>
+<body>
+
+<div class="card">
+<img src="logo.png" class="logo">
+<h2>🎓 University of East Capital</h2>
+<p>Student Result Portal</p>
+
+<select id="role" onchange="updatePlaceholder()">
+<option value="student">Student</option>
+<option value="accountant">Accountant</option>
+<option value="control">Control</option>
+<option value="admin">Admin</option>
+</select>
+
+<input id="userId" placeholder="Student ID">
+<input id="password" type="password" placeholder="Password">
+<button onclick="login()">Login</button>
+
+<div class="links">
+<a href="verify.html">Public Result Verification</a>
+</div>
+</div>
+
+<div class="footer">
+Designed by UEC ICT Department<br>
+© 2026 University of East Capital
+</div>
+
+<script>
+const API = window.location.origin + '/api';
+const params = new URLSearchParams(window.location.search);
+const goto = params.get('goto');
+
+function updatePlaceholder() {
+  const role = document.getElementById('role').value;
+  document.getElementById('userId').placeholder = (role === 'student') ? 'Student ID' : 'Username';
+}
+
+updatePlaceholder();
+
+// Auto-redirect if already logged in
+const studentToken = localStorage.getItem('resultToken');
+const accountToken = localStorage.getItem('accountToken');
+const controlToken = localStorage.getItem('controlToken');
+const adminToken = localStorage.getItem('adminToken');
+
+if (goto) {
+  // Redirect requested
+} else if (adminToken) {
+  location.href = 'admin.html';
+} else if (controlToken) {
+  location.href = 'control.html';
+} else if (accountToken) {
+  location.href = 'accounts.html';
+} else if (studentToken) {
+  location.href = 'index.html';
+}
+
+async function login() {
+  const role = document.getElementById('role').value;
+  const userId = document.getElementById('userId').value.trim();
+  const password = document.getElementById('password').value;
+
+  if (!userId || !password) {
+    alert('Please fill in all fields');
+    return;
+  }
+
+  if (role === 'student') {
+    await loginStudent(userId, password);
+  } else {
+    await loginAccount(userId, password, role);
+  }
+}
+
+async function loginStudent(id, password) {
+  try {
+    const res = await fetch(API + '/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, password })
+    });
+
+    const data = await res.json();
+    if (res.ok) {
+      localStorage.setItem('resultToken', data.token);
+      localStorage.setItem('student', JSON.stringify(data.student));
+      if (data.student.firstLogin) {
+        localStorage.setItem('firstLogin', '1');
+      }
+      location.href = 'index.html';
+    }
+    } else {
+      alert(data.error || 'Invalid credentials');
+    }
+  } catch (err) {
+    alert('Error connecting to server');
+  }
+}
+
+async function loginAccount(username, password, expectedRole) {
+  try {
+    const res = await fetch(API + '/auth/account-login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+
+    const data = await res.json();
+    if (res.ok && data.role === expectedRole) {
+      if (expectedRole === 'admin') {
+        localStorage.setItem('adminToken', data.token);
+        localStorage.setItem('adminUsername', data.username);
+        location.href = 'admin.html';
+      } else if (expectedRole === 'control') {
+        localStorage.setItem('controlToken', data.token);
+        localStorage.setItem('controlUsername', data.username);
+        location.href = 'control.html';
+      } else if (expectedRole === 'accountant') {
+        localStorage.setItem('accountToken', data.token);
+        localStorage.setItem('accountUsername', data.username);
+        location.href = 'accounts.html';
+      }
+    } else if (res.ok && data.role !== expectedRole) {
+      alert('This account does not have ' + expectedRole + ' permissions');
+    } else {
+      alert(data.error || 'Invalid credentials');
+    }
+  } catch (err) {
+    alert('Error connecting to server');
+  }
+}
+</script>
+</body>
+</html>

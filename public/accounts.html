@@ -59,6 +59,8 @@ const API = window.location.origin + '/api';
 let token = localStorage.getItem('accountToken');
 let currentStudent = null;
 
+if (!token) { location.href = 'login.html'; }
+
 if (token) {
   document.getElementById('loginBox').style.display = 'none';
   document.getElementById('mainBox').style.display = 'block';
@@ -166,7 +168,8 @@ async function exportPayments() {
 
 function logout() {
   localStorage.removeItem('accountToken');
-  location.reload();
+  localStorage.removeItem('accountUsername');
+  location.href = 'login.html';
 }
 </script>
 </body>

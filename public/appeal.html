@@ -58,7 +58,7 @@ const API = window.location.origin + '/api';
 const token = localStorage.getItem('resultToken');
 const student = JSON.parse(localStorage.getItem('student'));
 
-if (!token || !student) { location = 'index.html'; }
+if (!token || !student) { location = 'login.html'; }
 
 document.getElementById('name').innerText = student.name;
 document.getElementById('sid').innerText = 'Student ID: ' + student.id;
@@ -124,7 +124,7 @@ async function submitAppeal() {
 
 function logout() {
   localStorage.clear();
-  location = 'index.html';
+  location = 'login.html';
 }
 </script>
 </body>

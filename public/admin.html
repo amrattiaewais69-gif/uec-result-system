@@ -125,6 +125,8 @@ let csvData = null;
 let allStudents = [];
 let allAccounts = [];
 
+if (!token) { location.href = 'login.html'; }
+
 if (token) {
   document.getElementById('loginBox').style.display = 'none';
   document.getElementById('adminPanel').style.display = 'block';
@@ -352,7 +354,7 @@ async function saveEdit() {
 function logout() {
   localStorage.removeItem('adminToken');
   localStorage.removeItem('adminUsername');
-  location.reload();
+  location.href = 'login.html';
 }
 
 async function loadStudents() {
