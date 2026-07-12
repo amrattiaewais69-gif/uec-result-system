@@ -68,8 +68,12 @@ td{padding:8px;border:1px solid #ddd;text-align:center;}
 <div class="section">
 <h3>Appeal Settings</h3>
 <div style="display:flex;align-items:center;justify-content:center;gap:15px;flex-wrap:wrap;">
+<label style="font-weight:600;">Appeal Deadline:</label>
+<input type="datetime-local" id="appealDeadline" style="width:250px;padding:10px;border-radius:6px;border:1px solid #ccc;">
+<button class="success" onclick="saveAppealDeadline()" style="padding:10px 20px;">Save Deadline</button>
+</div>
+<div style="margin-top:12px;">
 <span id="appealStatus" style="font-size:16px;font-weight:600;"></span>
-<button id="appealToggle" onclick="toggleAppeals()" style="padding:12px 24px;font-size:15px;font-weight:600;border:none;color:white;border-radius:6px;cursor:pointer;"></button>
 </div>
 </div>
 
@@ -369,45 +373,51 @@ async function loadAppealSettings() {
     });
     if (res.ok) {
       const data = await res.json();
-      appealsOpen = data.appeals_open === 'true';
-      updateAppealUI();
+      if (data.appeal_deadline) {
+        const d = new Date(data.appeal_deadline);
+        const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+        document.getElementById('appealDeadline').value = local;
+      }
+      updateAppealStatus();
     }
   } catch (err) {}
 }
 
-function updateAppealUI() {
+function updateAppealStatus() {
+  const deadlineVal = document.getElementById('appealDeadline').value;
   const statusEl = document.getElementById('appealStatus');
-  const toggleBtn = document.getElementById('appealToggle');
-  if (appealsOpen) {
-    statusEl.innerHTML = 'Status: <span style="color:#27ae60">OPEN</span>';
-    toggleBtn.style.background = '#c0392b';
-    toggleBtn.innerText = 'Close Appeals';
+  if (!deadlineVal) {
+    statusEl.innerHTML = 'Status: <span style="color:#27ae60">OPEN</span> (no deadline set)';
+    return;
+  }
+  const deadline = new Date(deadlineVal);
+  const now = new Date();
+  if (now > deadline) {
+    statusEl.innerHTML = 'Status: <span style="color:#c0392b">CLOSED</span> (deadline passed: ' + deadline.toLocaleString() + ')';
   } else {
-    statusEl.innerHTML = 'Status: <span style="color:#c0392b">CLOSED</span>';
-    toggleBtn.style.background = '#27ae60';
-    toggleBtn.innerText = 'Open Appeals';
+    const diff = deadline - now;
+    const hours = Math.floor(diff / 3600000);
+    const mins = Math.floor((diff % 3600000) / 60000);
+    statusEl.innerHTML = 'Status: <span style="color:#27ae60">OPEN</span> — closes in ' + hours + 'h ' + mins + 'm (at ' + deadline.toLocaleString() + ')';
   }
 }
 
-async function toggleAppeals() {
-  appealsOpen = !appealsOpen;
+async function saveAppealDeadline() {
+  const deadlineVal = document.getElementById('appealDeadline').value;
   try {
     const res = await fetch(API + '/admin/settings', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-      body: JSON.stringify({ appeals_open: appealsOpen ? 'true' : 'false' })
+      body: JSON.stringify({ appeal_deadline: deadlineVal || null })
     });
     if (res.ok) {
-      updateAppealUI();
+      updateAppealStatus();
+      alert('Deadline saved');
     } else {
-      appealsOpen = !appealsOpen;
-      updateAppealUI();
-      alert('Failed to update');
+      alert('Failed to save');
     }
   } catch (err) {
-    appealsOpen = !appealsOpen;
-    updateAppealUI();
-    alert('Failed to update');
+    alert('Failed to save');
   }
 }
 
