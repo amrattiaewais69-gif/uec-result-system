@@ -1,6 +1,5 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
-const csv = require('csv-parse/sync');
 const pool = require('../config/database');
 const { authenticateToken, requireRole } = require('../middleware/auth');
 
@@ -17,6 +16,7 @@ router.post('/upload-results', async (req, res) => {
       return res.status(400).json({ error: 'CSV data required' });
     }
 
+    const csv = require('csv-parse/sync');
     const records = csv.parse(csvData, {
       columns: true,
       skip_empty_lines: true,
