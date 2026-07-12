@@ -11,6 +11,7 @@ const studentRoutes = require('./routes/student');
 const controlRoutes = require('./routes/control');
 const accountantRoutes = require('./routes/accountant');
 const verifyRoutes = require('./routes/verify');
+const adminRoutes = require('./routes/admin');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -73,6 +74,7 @@ app.use('/api/student', studentRoutes);
 app.use('/api/control', controlRoutes);
 app.use('/api/account', accountantRoutes);
 app.use('/api/verify', verifyRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

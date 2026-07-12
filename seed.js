@@ -44,6 +44,7 @@ async function seed() {
         student_name TEXT,
         course TEXT NOT NULL,
         amount DECIMAL(10,2),
+        recorded_by TEXT,
         date TIMESTAMP DEFAULT NOW(),
         UNIQUE(student_id, course)
       )
@@ -86,9 +87,10 @@ async function seed() {
     await pool.query(`
       INSERT INTO accounts (username, password_hash, role) VALUES
       ('mohamed', $1, 'accountant'),
-      ('amr', $2, 'control')
+      ('amr', $2, 'control'),
+      ('admin', $3, 'admin')
       ON CONFLICT (username) DO NOTHING
-    `, [accountantHash, controlHash]);
+    `, [accountantHash, controlHash, accountantHash]);
 
     // Seed settings
     console.log('Seeding settings...');

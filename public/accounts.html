@@ -33,6 +33,7 @@ button:hover{background:#274a86;}
 <div class="card" id="mainBox" style="display:none">
 <img src="logo.png" class="logo">
 <h2>Record Appeal Payment</h2>
+<p id="loggedUser" style="margin:5px 0;font-size:14px;color:#555;"></p>
 
 <input id="studentId" placeholder="Student ID">
 <button onclick="loadStudent()">Load Student</button>
@@ -61,6 +62,7 @@ let currentStudent = null;
 if (token) {
   document.getElementById('loginBox').style.display = 'none';
   document.getElementById('mainBox').style.display = 'block';
+  document.getElementById('loggedUser').innerText = 'Logged in as: ' + (localStorage.getItem('accountUsername') || '');
 }
 
 async function login() {
@@ -78,8 +80,10 @@ async function login() {
   if (res.ok && data.role === 'accountant') {
     token = data.token;
     localStorage.setItem('accountToken', token);
+    localStorage.setItem('accountUsername', data.username);
     document.getElementById('loginBox').style.display = 'none';
     document.getElementById('mainBox').style.display = 'block';
+    document.getElementById('loggedUser').innerText = 'Logged in as: ' + data.username;
   } else {
     alert('Invalid credentials or insufficient permissions');
   }

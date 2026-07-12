@@ -45,6 +45,7 @@ select{padding:6px;border-radius:5px;}
 <div class="card" id="controlPanel" style="display:none">
 <img src="logo.png" class="logo">
 <h2>Appeals Dashboard</h2>
+<p id="loggedUser" style="margin:5px 0;font-size:14px;color:#555;"></p>
 
 <div id="stats" style="display:flex;gap:15px;flex-wrap:wrap;margin-top:20px;justify-content:center;">
 <div class="statBox active" id="box_ALL" onclick="filterByStatus('ALL')">
@@ -88,6 +89,7 @@ let currentFilter = 'ALL';
 if (token) {
   document.getElementById('loginBox').style.display = 'none';
   document.getElementById('controlPanel').style.display = 'block';
+  document.getElementById('loggedUser').innerText = 'Logged in as: ' + (localStorage.getItem('controlUsername') || '');
   loadAppeals();
 }
 
@@ -106,8 +108,10 @@ async function login() {
   if (res.ok && data.role === 'control') {
     token = data.token;
     localStorage.setItem('controlToken', token);
+    localStorage.setItem('controlUsername', data.username);
     document.getElementById('loginBox').style.display = 'none';
     document.getElementById('controlPanel').style.display = 'block';
+    document.getElementById('loggedUser').innerText = 'Logged in as: ' + data.username;
     loadAppeals();
   } else {
     alert('Invalid credentials or insufficient permissions');

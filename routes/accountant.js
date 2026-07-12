@@ -60,10 +60,11 @@ router.post('/payment', authenticateToken, requireRole('accountant'), async (req
 
     const studentResult = await pool.query('SELECT name FROM students WHERE id = $1', [studentId]);
     const studentName = studentResult.rows.length > 0 ? studentResult.rows[0].name : '';
+    const recordedBy = req.user.username;
 
     await pool.query(
-      'INSERT INTO payments (student_id, student_name, course, amount) VALUES ($1, $2, $3, $4)',
-      [studentId, studentName, course, amount]
+      'INSERT INTO payments (student_id, student_name, course, amount, recorded_by) VALUES ($1, $2, $3, $4, $5)',
+      [studentId, studentName, course, amount, recordedBy]
     );
 
     res.json({ message: 'Payment saved successfully' });
@@ -77,12 +78,12 @@ router.post('/payment', authenticateToken, requireRole('accountant'), async (req
 router.get('/payments/export', authenticateToken, requireRole('accountant'), async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT student_id, student_name, course, amount, TO_CHAR(date, \'YYYY-MM-DD HH24:MI:SS\') as date FROM payments ORDER BY date DESC'
+      "SELECT student_id, student_name, course, amount, COALESCE(recorded_by, 'Unknown') as recorded_by, TO_CHAR(date, 'YYYY-MM-DD HH24:MI:SS') as date FROM payments ORDER BY date DESC"
     );
 
-    let csv = 'Student ID,Student Name,Course,Amount,Date\n';
+    let csv = 'Student ID,Student Name,Course,Amount,Recorded By,Date\n';
     result.rows.forEach(row => {
-      csv += `${row.student_id},${row.student_name},${row.course},${row.amount},${row.date}\n`;
+      csv += `${row.student_id},"${row.student_name}",${row.course},${row.amount},${row.recorded_by},${row.date}\n`;
     });
 
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');

@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UEC Admin Panel</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;font-family:'Poppins',sans-serif;}
+body{margin:0;background:#2f528f;min-height:100vh;padding:20px;display:flex;justify-content:center;}
+.card{background:#eee;width:95%;max-width:1100px;border-radius:12px;padding:25px;text-align:center;}
+.card2{background:#eee;width:350px;border-radius:12px;padding:25px;text-align:center;margin:auto;}
+.logo{width:70px;margin-bottom:5px;}
+input,select{width:100%;padding:10px;margin:6px 0;border-radius:6px;border:1px solid #ccc;}
+button{padding:10px 18px;background:#345a9d;border:none;color:white;border-radius:6px;cursor:pointer;font-size:14px;margin:4px;}
+button:hover{background:#274a86;}
+.logout{background:#777;}
+.danger{background:#c0392b;}
+.danger:hover{background:#a93226;}
+.success{background:#27ae60;}
+.success:hover{background:#219a52;}
+h2{margin:10px 0 5px;}
+h3{margin:5px 0 15px;}
+.table-container{overflow-x:auto;margin:15px 0;}
+table{width:100%;border-collapse:collapse;}
+th{background:#4e81bd;color:white;padding:10px;}
+td{padding:8px;border:1px solid #ddd;text-align:center;}
+.section{background:white;padding:20px;border-radius:10px;margin:15px 0;text-align:left;}
+.section h3{color:#345a9d;text-align:center;}
+.file-label{display:inline-block;padding:10px 20px;background:#345a9d;color:white;border-radius:6px;cursor:pointer;margin:10px 0;}
+.file-label:hover{background:#274a86;}
+.footer{margin-top:20px;color:white;font-size:14px;text-align:center;}
+</style>
+</head>
+<body>
+
+<div class="card2" id="loginBox">
+<img src="logo.png" class="logo">
+<h2>🎓 University of East Capital</h2>
+<p>Admin Login</p>
+<input id="username" placeholder="Username">
+<input id="password" type="password" placeholder="Password">
+<button onclick="login()">Login</button>
+</div>
+
+<div class="card" id="adminPanel" style="display:none">
+<h2>Admin Panel</h2>
+<p id="loggedUser" style="margin:5px 0;font-size:14px;color:#555;"></p>
+
+<div class="section">
+<h3>Upload Student Results (CSV)</h3>
+<p style="font-size:13px;color:#666;text-align:center;">CSV columns: student_id, name (optional), course, grade</p>
+<label class="file-label">Choose CSV File
+<input type="file" id="csvFile" accept=".csv" style="display:none;" onchange="previewCSV()">
+</label>
+<div id="preview" style="max-height:200px;overflow:auto;margin:10px 0;"></div>
+<button class="success" onclick="uploadResults()">Upload Results</button>
+</div>
+
+<div class="section">
+<h3>Manage Accounts</h3>
+<div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-bottom:15px;">
+<input id="newUsername" placeholder="Username" style="width:200px;">
+<input id="newPassword" placeholder="Password" style="width:200px;">
+<select id="newRole" style="width:200px;">
+<option value="accountant">Accountant</option>
+<option value="control">Control</option>
+<option value="admin">Admin</option>
+</select>
+<button class="success" onclick="createAccount()">Add Account</button>
+</div>
+<div class="table-container">
+<table id="accountsTable">
+<tr><th>Username</th><th>Role</th><th>Actions</th></tr>
+</table>
+</div>
+</div>
+
+<div class="section">
+<h3>Reset Passwords</h3>
+<div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-bottom:15px;">
+<button onclick="resetAllStudents()">Reset All Student Passwords</button>
+<button onclick="resetAccountPassword('mohamed')">Reset Accountant (mohamed)</button>
+<button onclick="resetAccountPassword('amr')">Reset Control (amr)</button>
+</div>
+<p style="font-size:13px;color:#666;text-align:center;">Student default password = their student ID (e.g. 25100001)</p>
+<p style="font-size:13px;color:#666;text-align:center;">Accountant: Mohamed1 | Control: Abdelrahman1</p>
+</div>
+
+<button class="logout" onclick="logout()">Logout</button>
+</div>
+
+<div class="footer">
+Designed by UEC ICT Department<br>
+© 2026 University of East Capital
+</div>
+
+<script>
+const API = window.location.origin + '/api';
+let token = localStorage.getItem('adminToken');
+let csvData = null;
+
+if (token) {
+  document.getElementById('loginBox').style.display = 'none';
+  document.getElementById('adminPanel').style.display = 'block';
+  document.getElementById('loggedUser').innerText = 'Logged in as: ' + (localStorage.getItem('adminUsername') || 'admin');
+  loadAccounts();
+}
+
+async function login() {
+  const username = document.getElementById('username').value;
+  const password = document.getElementById('password').value;
+
+  const res = await fetch(API + '/auth/account-login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password })
+  });
+
+  const data = await res.json();
+
+  if (res.ok && data.role === 'admin') {
+    token = data.token;
+    localStorage.setItem('adminToken', token);
+    localStorage.setItem('adminUsername', data.username);
+    document.getElementById('loginBox').style.display = 'none';
+    document.getElementById('adminPanel').style.display = 'block';
+    document.getElementById('loggedUser').innerText = 'Logged in as: ' + data.username;
+    loadAccounts();
+  } else {
+    alert('Invalid credentials or insufficient permissions');
+  }
+}
+
+function previewCSV() {
+  const file = document.getElementById('csvFile').files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    csvData = e.target.result;
+    const lines = csvData.split('\n').slice(0, 6);
+    let html = '<table><tr>';
+    const headers = lines[0].split(',');
+    headers.forEach(h => html += '<th>' + h.trim() + '</th>');
+    html += '</tr>';
+    for (let i = 1; i < lines.length; i++) {
+      if (!lines[i].trim()) continue;
+      const cols = lines[i].split(',');
+      html += '<tr>';
+      cols.forEach(c => html += '<td>' + c.trim() + '</td>');
+      html += '</tr>';
+    }
+    if (csvData.split('\n').length > 6) html += '<tr><td colspan="' + headers.length + '" style="color:#999;">... more rows</td></tr>';
+    html += '</table>';
+    document.getElementById('preview').innerHTML = html;
+  };
+  reader.readAsText(file);
+}
+
+async function uploadResults() {
+  if (!csvData) { alert('Please select a CSV file first'); return; }
+
+  try {
+    const res = await fetch(API + '/admin/upload-results', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify({ csvData })
+    });
+
+    const data = await res.json();
+    if (res.ok) {
+      alert(data.message + (data.errors.length ? '\nErrors: ' + data.errors.join('\n') : ''));
+      document.getElementById('preview').innerHTML = '';
+      document.getElementById('csvFile').value = '';
+      csvData = null;
+    } else {
+      alert(data.error || 'Upload failed');
+    }
+  } catch (err) {
+    alert('Upload failed');
+  }
+}
+
+async function loadAccounts() {
+  const res = await fetch(API + '/admin/accounts', {
+    headers: { 'Authorization': 'Bearer ' + token }
+  });
+
+  if (!res.ok) return;
+  const data = await res.json();
+
+  const table = document.getElementById('accountsTable');
+  table.innerHTML = '<tr><th>Username</th><th>Role</th><th>Actions</th></tr>';
+  data.forEach(a => {
+    const canDelete = a.username !== 'amr' && a.username !== 'mohamed';
+    table.innerHTML += '<tr><td>' + a.username + '</td><td>' + a.role + '</td><td>' +
+      '<button onclick="resetAccountPassword(\'' + a.username + '\')">Reset Pass</button>' +
+      (canDelete ? ' <button class="danger" onclick="deleteAccount(\'' + a.username + '\')">Delete</button>' : '') +
+      '</td></tr>';
+  });
+}
+
+async function createAccount() {
+  const username = document.getElementById('newUsername').value.trim();
+  const password = document.getElementById('newPassword').value;
+  const role = document.getElementById('newRole').value;
+
+  if (!username || !password) { alert('Enter username and password'); return; }
+
+  const res = await fetch(API + '/admin/accounts', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + token
+    },
+    body: JSON.stringify({ username, password, role })
+  });
+
+  const data = await res.json();
+  if (res.ok) {
+    alert('Account created');
+    document.getElementById('newUsername').value = '';
+    document.getElementById('newPassword').value = '';
+    loadAccounts();
+  } else {
+    alert(data.error || 'Failed');
+  }
+}
+
+async function deleteAccount(username) {
+  if (!confirm('Delete account "' + username + '"?')) return;
+
+  const res = await fetch(API + '/admin/accounts/' + username, {
+    method: 'DELETE',
+    headers: { 'Authorization': 'Bearer ' + token }
+  });
+
+  const data = await res.json();
+  if (res.ok) {
+    alert('Deleted');
+    loadAccounts();
+  } else {
+    alert(data.error || 'Failed');
+  }
+}
+
+async function resetAccountPassword(username) {
+  let newPassword;
+  if (username === 'mohamed') newPassword = 'Mohamed1';
+  else if (username === 'amr') newPassword = 'Abdelrahman1';
+  else newPassword = prompt('Enter new password for ' + username + ':');
+
+  if (!newPassword) return;
+
+  const res = await fetch(API + '/admin/accounts/' + username + '/reset-password', {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + token
+    },
+    body: JSON.stringify({ newPassword })
+  });
+
+  const data = await res.json();
+  alert(data.message || data.error);
+}
+
+async function resetAllStudents() {
+  if (!confirm('Reset ALL student passwords to their student IDs?')) return;
+
+  const res = await fetch(API + '/admin/students/reset-all', {
+    method: 'PUT',
+    headers: { 'Authorization': 'Bearer ' + token }
+  });
+
+  const data = await res.json();
+  alert(data.message || data.error);
+}
+
+function logout() {
+  localStorage.removeItem('adminToken');
+  localStorage.removeItem('adminUsername');
+  location.reload();
+}
+</script>
+</body>
+</html>
