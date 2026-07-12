@@ -3,106 +3,153 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>UEC Student Results</title>
+<title>UEC Student Result Portal</title>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;font-family:'Poppins',sans-serif;}
 body{margin:0;background:#2f528f;min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;}
-.card{background:#eee;width:450px;border-radius:12px;padding:30px;text-align:center;}
+.card{background:#eee;width:420px;border-radius:12px;padding:30px;text-align:center;}
 .logo{width:90px;margin-bottom:10px;}
 input{width:100%;padding:12px;margin:8px 0;border-radius:6px;border:1px solid #ccc;}
 button{width:100%;padding:12px;margin-top:10px;background:#345a9d;border:none;color:white;border-radius:6px;cursor:pointer;font-size:15px;}
 button:hover{background:#274a86;}
+.logout{background:#777;}
+.appeal{background:#d35400;}
+.appeal:hover{background:#b84300;}
 .studentPhoto{width:120px;height:120px;border-radius:50%;margin:auto;display:block;}
 table{width:100%;border-collapse:collapse;margin-top:20px;}
 th{background:#4e81bd;color:white;padding:10px;}
-td{padding:10px;border:1px solid #ddd;text-align:center;}
-.logout{background:#777;margin-top:15px;}
+td{padding:10px;border:1px solid #ddd;}
 .footer{margin-top:30px;color:white;font-size:14px;text-align:center;}
-.gpa-box{background:#345a9d;color:white;padding:10px;border-radius:8px;margin-top:15px;font-size:18px;}
-.change-pass{margin-top:15px;padding:10px;border-radius:6px;border:1px solid #ccc;width:100%;}
 </style>
 </head>
 <body>
 
-<!-- LOGIN -->
 <div class="card" id="loginBox">
 <img src="logo.png" class="logo">
 <h2>🎓 University of East Capital</h2>
 <p>Student Result Portal</p>
-<input id="studentId" placeholder="Student ID">
-<input id="password" type="password" placeholder="Password">
+<input id="id" placeholder="Student ID">
+<input id="pass" type="password" placeholder="Password">
 <button onclick="login()">Login</button>
 </div>
 
-<!-- RESULTS -->
-<div class="card" id="resultBox" style="display:none">
+<div class="card" id="firstLoginBox" style="display:none">
 <img src="logo.png" class="logo">
-<img id="photo" class="studentPhoto">
-<h2 id="name"></h2>
-<p id="sid"></p>
-
-<table id="resultsTable">
-<tr><th>Course</th><th>Grade</th></tr>
-</table>
-
-<div class="gpa-box">GPA: <span id="gpa"></span></div>
-
-<button onclick="downloadPDF()">Download PDF</button>
-
-<a href="appeal.html" style="display:block;margin-top:10px;color:#345a9d;text-decoration:none;">Submit Appeal</a>
-
-<div id="changePassSection" style="display:none;margin-top:15px;">
-<input class="change-pass" id="newPassword" type="password" placeholder="New Password">
-<button onclick="changePassword()">Update Password</button>
+<h2>Welcome to UEC Result Portal</h2>
+<p>Please set your new password</p>
+<input id="newPass" type="password" placeholder="New Password">
+<input id="confirmPass" type="password" placeholder="Confirm Password">
+<button onclick="submitNewPassword()">Submit</button>
 </div>
 
+<div class="card" id="loadingBox" style="display:none">
+<h3>Loading your data...</h3>
+</div>
+
+<div class="card" id="resultBox" style="display:none">
+<img id="photo" class="studentPhoto">
+<h3 id="name"></h3>
+<p id="sid"></p>
+<table id="resultTable">
+<tr><th>Course</th><th>Grade</th></tr>
+</table>
+<h3>GPA : <span id="gpa"></span></h3>
+<button onclick="downloadPDF()">Download Official Result</button>
+<button class="appeal" onclick="openAppeal()">Submit Appeal</button>
 <button class="logout" onclick="logout()">Logout</button>
+<p style="margin-top:15px;font-size:13px;color:#555"> BL = Failed bylaw (Failed in the written Exam) </p>
 </div>
 
 <div class="footer">
-UEC ICT Department<br>
+Designed by UEC ICT Department<br>
 © 2026 University of East Capital
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js"></script>
 <script>
 const API = window.location.origin + '/api';
-let studentData = null;
+let currentStudent = null;
 let token = localStorage.getItem('resultToken');
 
 if (token) {
+  document.getElementById('loginBox').style.display = 'none';
+  document.getElementById('loadingBox').style.display = 'block';
   loadResults();
 }
 
 async function login() {
-  const id = document.getElementById('studentId').value.trim();
-  const password = document.getElementById('password').value;
+  const id = document.getElementById('id').value.trim();
+  const pass = document.getElementById('pass').value;
 
-  if (!id || !password) {
-    alert('Please enter Student ID and password');
-    return;
-  }
+  document.getElementById('loginBox').style.display = 'none';
+  document.getElementById('loadingBox').style.display = 'block';
 
   try {
     const res = await fetch(API + '/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, password })
+      body: JSON.stringify({ id, password: pass })
     });
 
     const data = await res.json();
+    document.getElementById('loadingBox').style.display = 'none';
 
     if (res.ok) {
       token = data.token;
       localStorage.setItem('resultToken', token);
       localStorage.setItem('student', JSON.stringify(data.student));
-      loadResults();
+      currentStudent = data.student;
+
+      if (data.student.firstLogin) {
+        showFirstLoginCard(data.student.id);
+      } else {
+        loadResults();
+      }
     } else {
-      alert(data.error || 'Login failed');
+      alert(data.error || 'Invalid ID or Password');
+      document.getElementById('loginBox').style.display = 'block';
     }
   } catch (err) {
-    alert('Error connecting to server');
+    alert('The results are not yet released. Please check back later');
+    document.getElementById('loginBox').style.display = 'block';
+  }
+}
+
+function showFirstLoginCard(studentId) {
+  document.getElementById('firstLoginBox').style.display = 'block';
+  document.getElementById('loginBox').style.display = 'none';
+  document.getElementById('resultBox').style.display = 'none';
+}
+
+async function submitNewPassword() {
+  const newPass = document.getElementById('newPass').value.trim();
+  const confirmPass = document.getElementById('confirmPass').value.trim();
+  if (newPass === '' || confirmPass === '') { alert('Password fields cannot be empty'); return; }
+  if (newPass !== confirmPass) { alert('Passwords do not match!'); return; }
+  if (newPass.length < 4) { alert('Password must be at least 4 characters'); return; }
+
+  try {
+    const res = await fetch(API + '/auth/change-password', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify({ newPassword: newPass })
+    });
+
+    const data = await res.json();
+    if (res.ok) {
+      alert('Password updated successfully. Please login again.');
+      localStorage.clear();
+      location.reload();
+    } else {
+      alert(data.error || 'Error updating password. Try again.');
+    }
+  } catch (err) {
+    alert('Error updating password');
   }
 }
 
@@ -120,117 +167,160 @@ async function loadResults() {
     }
 
     const data = await res.json();
-    studentData = data;
+    currentStudent = data;
 
     document.getElementById('loginBox').style.display = 'none';
+    document.getElementById('loadingBox').style.display = 'none';
     document.getElementById('resultBox').style.display = 'block';
     document.getElementById('name').innerText = data.name;
     document.getElementById('sid').innerText = 'Student ID: ' + data.id;
     document.getElementById('gpa').innerText = data.gpa;
 
     const photo = document.getElementById('photo');
-    photo.src = 'https://amrattiaewais69-gif.github.io/student-results/photos/' + data.id.replace('-', '') + '.jpg';
+    photo.src = 'https://amrattiaewais69-gif.github.io/student-results/photos/' + data.id + '.jpg';
 
-    const table = document.getElementById('resultsTable');
+    const table = document.getElementById('resultTable');
+    table.innerHTML = '<tr><th>Course</th><th>Grade</th></tr>';
     for (const [course, grade] of Object.entries(data.courses)) {
-      const row = table.insertRow();
-      row.innerHTML = '<td>' + course + '</td><td>' + grade + '</td>';
-    }
-
-    // Check if first login
-    const student = JSON.parse(localStorage.getItem('student'));
-    if (student && student.firstLogin) {
-      document.getElementById('changePassSection').style.display = 'block';
+      table.innerHTML += '<tr><td>' + course + '</td><td>' + grade + '</td></tr>';
     }
   } catch (err) {
     alert('Error loading results');
   }
 }
 
-async function changePassword() {
-  const newPassword = document.getElementById('newPassword').value;
-  if (!newPassword || newPassword.length < 4) {
-    alert('Password must be at least 4 characters');
+function openAppeal() { window.location = 'appeal.html'; }
+function logout() { localStorage.clear(); location.reload(); }
+
+async function downloadPDF() {
+  if (!currentStudent) {
+    alert('Session expired. Please login again.');
+    logout();
     return;
   }
 
-  try {
-    const res = await fetch(API + '/auth/change-password', {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + token
-      },
-      body: JSON.stringify({ newPassword })
-    });
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
 
-    const data = await res.json();
-    if (res.ok) {
-      alert('Password updated successfully');
-      document.getElementById('changePassSection').style.display = 'none';
-      const student = JSON.parse(localStorage.getItem('student'));
-      student.firstLogin = false;
-      localStorage.setItem('student', JSON.stringify(student));
-    } else {
-      alert(data.error || 'Failed to update password');
-    }
-  } catch (err) {
-    alert('Error updating password');
-  }
-}
+  const logoUrl = 'logo.png';
+  const logoRes = await fetch(logoUrl);
+  const logoBlob = await logoRes.blob();
+  const logoReader = new FileReader();
 
-function downloadPDF() {
-  if (!studentData) return;
+  logoReader.onloadend = async function() {
+    doc.addImage(logoReader.result, 'PNG', 15, 10, 30, 30);
 
-  if (typeof window.jspdf === 'undefined') {
-    alert('PDF library is loading, please try again in a moment');
-    return;
-  }
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(22);
+    doc.setTextColor(0, 51, 102);
+    doc.text('University of East Capital', 105, 25, { align: 'center' });
 
-  try {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-
-    doc.setFontSize(20);
-    doc.text('University of East Capital', 105, 20, { align: 'center' });
-    doc.setFontSize(14);
-    doc.text('Student Result Statement', 105, 30, { align: 'center' });
+    doc.setFontSize(16);
+    doc.setTextColor(0, 0, 0);
+    doc.text('MidTerm Result-Semester 2', 105, 35, { align: 'center' });
 
     doc.setFontSize(12);
-    doc.text('Name: ' + studentData.name, 20, 50);
-    doc.text('Student ID: ' + studentData.id, 20, 60);
-    doc.text('GPA: ' + studentData.gpa, 20, 70);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Student Name:', 20, 55);
+    doc.text('Student ID:', 20, 65);
 
-    let y = 90;
-    doc.setFontSize(11);
-    doc.text('Course', 20, y);
-    doc.text('Grade', 150, y);
-    y += 5;
-    doc.line(20, y, 190, y);
-    y += 10;
+    doc.setFont('helvetica', 'normal');
+    doc.text(currentStudent.name, 60, 55);
+    doc.text(currentStudent.id, 60, 65);
 
-    for (const [course, grade] of Object.entries(studentData.courses)) {
-      doc.text(course, 20, y);
-      doc.text(grade, 150, y);
-      y += 10;
+    const imgUrl = 'https://amrattiaewais69-gif.github.io/student-results/photos/' + currentStudent.id + '.jpg';
+
+    try {
+      const imgRes = await fetch(imgUrl);
+      const imgBlob = await imgRes.blob();
+      const reader = new FileReader();
+
+      reader.onloadend = function() {
+        doc.addImage(reader.result, 'JPEG', 160, 50, 30, 35);
+        drawTable();
+      };
+
+      reader.readAsDataURL(imgBlob);
+    } catch (e) {
+      drawTable();
     }
 
-    y += 10;
-    doc.setFontSize(12);
-    doc.text('Verified by UEC', 105, y, { align: 'center' });
-    y += 10;
-    doc.setFontSize(10);
-    doc.text('This document is digitally generated and does not require a signature.', 105, y, { align: 'center' });
+    function drawTable() {
+      const body = [];
+      for (const [course, grade] of Object.entries(currentStudent.courses)) {
+        body.push([course, grade]);
+      }
+      body.push(['GPA', currentStudent.gpa]);
 
-    doc.save('UEC_Result_' + studentData.id + '.pdf');
-  } catch (err) {
-    alert('Error generating PDF: ' + err.message);
-  }
-}
+      doc.autoTable({
+        startY: 90,
+        head: [['Course', 'Grade']],
+        body: body,
+        theme: 'grid',
+        headStyles: {
+          fillColor: [0, 70, 140],
+          textColor: 255,
+          halign: 'center',
+          fontStyle: 'bold',
+          fontSize: 14
+        },
+        bodyStyles: {
+          halign: 'center',
+          fontSize: 12,
+          cellPadding: 3
+        },
+        alternateRowStyles: {
+          fillColor: [245, 247, 250]
+        },
+        columnStyles: {
+          0: { cellWidth: 130 },
+          1: { cellWidth: 40 }
+        }
+      });
 
-function logout() {
-  localStorage.clear();
-  location.reload();
+      let y = doc.lastAutoTable.finalY + 20;
+
+      doc.line(130, y, 190, y);
+      doc.setFontSize(11);
+      doc.text('Controller of Examinations Unit', 160, y + 8, { align: 'center' });
+
+      const verifyLink = window.location.origin + '/api/verify/' + currentStudent.id;
+      const qrImage = 'https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=' + encodeURIComponent(verifyLink);
+
+      const qr = new Image();
+      qr.crossOrigin = 'Anonymous';
+
+      qr.onload = function() {
+        doc.addImage(qr, 'PNG', 20, y - 10, 35, 35);
+        doc.setFontSize(10);
+        doc.text('Scan to Verify Result', 37, y + 30, { align: 'center' });
+
+        doc.setFontSize(12);
+        doc.text('BL = Failed bylaw (Failed in the written Exam)', 105, 260, { align: 'center' });
+
+        let lineY = 275;
+        doc.setDrawColor(0, 0, 0);
+        doc.setLineWidth(0.3);
+        doc.line(20, lineY, 190, lineY);
+
+        doc.setFontSize(10);
+        doc.setTextColor(0, 0, 0);
+        doc.text('University of East Capital | Cairo – Egypt | www.uec.edu.eg | Hotline: 17523', 105, 280, { align: 'center' });
+
+        doc.save(currentStudent.id + '_UEC_Result.pdf');
+      };
+
+      qr.onerror = function() {
+        doc.setFontSize(12);
+        doc.text('BL = Failed bylaw (Failed in the written Exam)', 105, 260, { align: 'center' });
+        doc.save(currentStudent.id + '_UEC_Result.pdf');
+      };
+
+      qr.src = qrImage;
+    }
+  };
+
+  logoReader.readAsDataURL(logoBlob);
 }
 </script>
 </body>

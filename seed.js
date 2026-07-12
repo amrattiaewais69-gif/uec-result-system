@@ -124,7 +124,7 @@ async function seed() {
       await pool.query(`
         INSERT INTO students (id, name, password_hash, first_login)
         VALUES ($1, $2, $3, true)
-        ON CONFLICT (id) DO NOTHING
+        ON CONFLICT (id) DO UPDATE SET password_hash = $3, first_login = true
       `, [student.id, student.name, hash]);
 
       const studentGrades = courses.map((course, i) => {
@@ -136,7 +136,7 @@ async function seed() {
         await pool.query(`
           INSERT INTO results (student_id, course, grade)
           VALUES ($1, $2, $3)
-          ON CONFLICT (student_id, course) DO NOTHING
+          ON CONFLICT (student_id, course) DO UPDATE SET grade = $3
         `, [student.id, courses[i], studentGrades[i]]);
       }
     }
