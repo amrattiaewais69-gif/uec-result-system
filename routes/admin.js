@@ -32,6 +32,7 @@ router.post('/upload-results', async (req, res) => {
       const course = row.course || row.Course;
       const grade = row.grade || row.Grade;
       const name = row.name || row.Name || row.student_name || '';
+      const gpa = row.gpa || row.GPA || null;
 
       if (!studentId || !course || !grade) {
         skipped++;
@@ -45,9 +46,13 @@ router.post('/upload-results', async (req, res) => {
           if (existing.rows.length === 0) {
             const hash = await bcrypt.hash(studentId.replace('-', ''), 10);
             await pool.query(
-              'INSERT INTO students (id, name, password_hash, first_login) VALUES ($1, $2, $3, true) ON CONFLICT (id) DO UPDATE SET name = $2',
-              [studentId, name, hash]
+              'INSERT INTO students (id, name, password_hash, first_login, gpa) VALUES ($1, $2, $3, true, $4) ON CONFLICT (id) DO UPDATE SET name = $2, gpa = $4',
+              [studentId, name, hash, gpa || null]
             );
+          } else {
+            if (gpa) {
+              await pool.query('UPDATE students SET gpa = $1 WHERE id = $2', [gpa, studentId]);
+            }
           }
         }
 

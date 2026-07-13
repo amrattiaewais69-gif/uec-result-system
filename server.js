@@ -86,6 +86,9 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Auto-migrate: add gpa column if missing
+pool.query("ALTER TABLE students ADD COLUMN IF NOT EXISTS gpa NUMERIC(4,2)").catch(() => {});
+
 // SPA fallback - only for non-file routes
 app.get('*', (req, res) => {
   if (req.path.includes('.')) {

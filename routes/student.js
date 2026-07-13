@@ -9,7 +9,7 @@ router.get('/results', authenticateToken, async (req, res) => {
   try {
     const studentId = req.user.id;
 
-    const studentResult = await pool.query('SELECT id, name FROM students WHERE id = $1', [studentId]);
+    const studentResult = await pool.query('SELECT id, name, gpa FROM students WHERE id = $1', [studentId]);
     if (studentResult.rows.length === 0) {
       return res.status(404).json({ error: 'Student not found' });
     }
@@ -20,23 +20,13 @@ router.get('/results', authenticateToken, async (req, res) => {
     );
 
     const courses = {};
-    let totalPoints = 0;
-    let totalCredits = 0;
-
-    const gradePoints = {
-      'A+': 4.0, 'A': 4.0, 'B+': 3.5, 'B': 3.0, 'C+': 2.5,
-      'C': 2.0, 'D+': 1.5, 'D': 1.0, 'F': 0.0
-    };
 
     coursesResult.rows.forEach(row => {
       courses[row.course] = row.grade;
-      if (row.grade && row.grade !== 'F' && gradePoints[row.grade] !== undefined) {
-        totalPoints += gradePoints[row.grade];
-        totalCredits += 1;
-      }
     });
 
-    const gpa = totalCredits > 0 ? (totalPoints / totalCredits).toFixed(2) : '0.00';
+    const storedGpa = studentResult.rows[0].gpa;
+    const gpa = storedGpa !== null ? parseFloat(storedGpa).toFixed(2) : '0.00';
 
     res.json({
       id: studentId,
