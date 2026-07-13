@@ -5,6 +5,7 @@ const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
+const pool = require('./config/database');
 
 const authRoutes = require('./routes/auth');
 const studentRoutes = require('./routes/student');
