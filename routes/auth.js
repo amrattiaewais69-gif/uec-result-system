@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const pool = require('../config/database');
+const { authenticateToken } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -79,13 +80,9 @@ router.post('/account-login', async (req, res) => {
 });
 
 // Change password (student)
-router.put('/change-password', async (req, res) => {
+router.put('/change-password', authenticateToken, async (req, res) => {
   try {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-    if (!token) return res.status(401).json({ error: 'Access denied' });
-
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = req.user;
     const { newPassword } = req.body;
 
     const passwordError = validatePassword(newPassword);
@@ -110,13 +107,9 @@ router.put('/change-password', async (req, res) => {
 });
 
 // Change password (account - admin/control/accountant)
-router.put('/account-change-password', async (req, res) => {
+router.put('/account-change-password', authenticateToken, async (req, res) => {
   try {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-    if (!token) return res.status(401).json({ error: 'Access denied' });
-
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = req.user;
     const { newPassword } = req.body;
 
     const passwordError = validatePassword(newPassword);

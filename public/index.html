@@ -151,7 +151,11 @@ async function submitNewPassword() {
   const confirmPass = document.getElementById('confirmPass').value.trim();
   if (newPass === '' || confirmPass === '') { alert('Password fields cannot be empty'); return; }
   if (newPass !== confirmPass) { alert('Passwords do not match!'); return; }
-  if (newPass.length < 4) { alert('Password must be at least 4 characters'); return; }
+  if (newPass.length < 8) { alert('Password must be at least 8 characters'); return; }
+  if (!/[A-Z]/.test(newPass)) { alert('Password must contain at least one uppercase letter'); return; }
+  if (!/[a-z]/.test(newPass)) { alert('Password must contain at least one lowercase letter'); return; }
+  if (!/[0-9]/.test(newPass)) { alert('Password must contain at least one number'); return; }
+  if (!/[^A-Za-z0-9]/.test(newPass)) { alert('Password must contain at least one special character (!@#$%^&*)'); return; }
 
   try {
     const res = await fetch(API + '/auth/change-password', {
@@ -206,7 +210,11 @@ async function loadResults() {
     const table = document.getElementById('resultTable');
     table.innerHTML = '<tr><th>Course</th><th>Grade</th></tr>';
     for (const [course, grade] of Object.entries(data.courses)) {
-      table.innerHTML += '<tr><td>' + course + '</td><td>' + grade + '</td></tr>';
+      const tr = document.createElement('tr');
+      const td1 = document.createElement('td'); td1.textContent = course;
+      const td2 = document.createElement('td'); td2.textContent = grade;
+      tr.appendChild(td1); tr.appendChild(td2);
+      table.appendChild(tr);
     }
   } catch (err) {
     alert('Error loading results');

@@ -4,6 +4,15 @@ const { authenticateToken, requireRole } = require('../middleware/auth');
 
 const router = express.Router();
 
+function sanitizeCsvCell(value) {
+  if (!value) return '';
+  const str = String(value);
+  if (/^[=+\-@\t\r]/.test(str)) {
+    return "'" + str;
+  }
+  return str.replace(/"/g, '""');
+}
+
 // Get student by ID (for accountant)
 router.get('/student/:id', authenticateToken, requireRole('accountant'), async (req, res) => {
   try {
@@ -50,6 +59,10 @@ router.post('/payment', authenticateToken, requireRole('accountant'), async (req
       return res.status(400).json({ error: 'Student ID, course, and amount required' });
     }
 
+    if (typeof amount !== 'number' || amount <= 0) {
+      return res.status(400).json({ error: 'Amount must be a positive number' });
+    }
+
     const existing = await pool.query(
       'SELECT id FROM payments WHERE student_id = $1 AND course = $2',
       [studentId, course]
@@ -83,7 +96,9 @@ router.get('/payments/export', authenticateToken, requireRole('accountant'), asy
 
     let csv = 'Student ID,Student Name,Course,Amount,Recorded By,Date\n';
     result.rows.forEach(row => {
-      csv += `${row.student_id},"${row.student_name}",${row.course},${row.amount},${row.recorded_by},${row.date}\n`;
+      const safeName = sanitizeCsvCell(row.student_name);
+      const safeCourse = sanitizeCsvCell(row.course);
+      csv += `${row.student_id},"${safeName}",${safeCourse},${row.amount},${row.recorded_by},${row.date}\n`;
     });
 
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');

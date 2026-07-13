@@ -3,6 +3,15 @@ const bcrypt = require('bcrypt');
 const pool = require('../config/database');
 const { authenticateToken, requireRole } = require('../middleware/auth');
 
+function validatePassword(password) {
+  if (!password || password.length < 8) return 'Password must be at least 8 characters';
+  if (!/[A-Z]/.test(password)) return 'Password must contain at least one uppercase letter';
+  if (!/[a-z]/.test(password)) return 'Password must contain at least one lowercase letter';
+  if (!/[0-9]/.test(password)) return 'Password must contain at least one number';
+  if (!/[^A-Za-z0-9]/.test(password)) return 'Password must contain at least one special character (!@#$%^&*)';
+  return null;
+}
+
 const router = express.Router();
 
 // All admin routes require 'admin' role
@@ -70,7 +79,7 @@ router.post('/upload-results', async (req, res) => {
     res.json({ message: `Uploaded ${uploaded} results, skipped ${skipped}`, errors: errors.slice(0, 10) });
   } catch (err) {
     console.error('Upload results error:', err);
-    res.status(500).json({ error: 'Failed to parse CSV: ' + err.message });
+    res.status(500).json({ error: 'Failed to process CSV' });
   }
 });
 
@@ -98,10 +107,20 @@ router.put('/students/:id', async (req, res) => {
       if (existing.rows.length > 0) {
         return res.status(400).json({ error: 'Student ID already exists' });
       }
-      await pool.query('UPDATE students SET id = $1 WHERE id = $2', [newId, id]);
-      await pool.query('UPDATE results SET student_id = $1 WHERE student_id = $2', [newId, id]);
-      await pool.query('UPDATE appeals SET student_id = $1 WHERE student_id = $2', [newId, id]);
-      await pool.query('UPDATE payments SET student_id = $1 WHERE student_id = $2', [newId, id]);
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        await client.query('UPDATE students SET id = $1 WHERE id = $2', [newId, id]);
+        await client.query('UPDATE results SET student_id = $1 WHERE student_id = $2', [newId, id]);
+        await client.query('UPDATE appeals SET student_id = $1 WHERE student_id = $2', [newId, id]);
+        await client.query('UPDATE payments SET student_id = $1 WHERE student_id = $2', [newId, id]);
+        await client.query('COMMIT');
+      } catch (e) {
+        await client.query('ROLLBACK');
+        throw e;
+      } finally {
+        client.release();
+      }
     }
 
     const targetId = newId || id;
@@ -134,7 +153,11 @@ router.put('/accounts/:username', async (req, res) => {
     }
 
     const targetUsername = newUsername || username;
+    const validRoles = ['accountant', 'control', 'admin'];
     if (role) {
+      if (!validRoles.includes(role)) {
+        return res.status(400).json({ error: 'Invalid role' });
+      }
       await pool.query('UPDATE accounts SET role = $1 WHERE username = $2', [role, targetUsername]);
     }
     if (display_name !== undefined) {
@@ -168,6 +191,10 @@ router.post('/accounts', async (req, res) => {
 
     const hash = await bcrypt.hash(password, 10);
     await pool.query('INSERT INTO accounts (username, password_hash, role, display_name) VALUES ($1, $2, $3, $4)', [username, hash, role, display_name || '']);
+    await pool.query(
+      "INSERT INTO audit_log (student_id, course, old_status, new_status, actor) VALUES ($1, $2, $3, $4, $5)",
+      [username, 'account_create', 'none', 'created', req.user.username]
+    );
     res.json({ message: 'Account created successfully' });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
@@ -182,6 +209,10 @@ router.delete('/accounts/:username', async (req, res) => {
       return res.status(400).json({ error: 'Cannot delete default accounts' });
     }
     await pool.query('DELETE FROM accounts WHERE username = $1', [username]);
+    await pool.query(
+      "INSERT INTO audit_log (student_id, course, old_status, new_status, actor) VALUES ($1, $2, $3, $4, $5)",
+      [username, 'account_delete', 'active', 'deleted', req.user.username]
+    );
     res.json({ message: 'Account deleted' });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
@@ -193,8 +224,9 @@ router.put('/accounts/:username/reset-password', async (req, res) => {
   try {
     const { username } = req.params;
     const { newPassword } = req.body;
-    if (!newPassword || newPassword.length < 8) {
-      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    const passwordError = validatePassword(newPassword);
+    if (passwordError) {
+      return res.status(400).json({ error: passwordError });
     }
 
     const hash = await bcrypt.hash(newPassword, 10);
@@ -202,6 +234,10 @@ router.put('/accounts/:username/reset-password', async (req, res) => {
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'Account not found' });
     }
+    await pool.query(
+      "INSERT INTO audit_log (student_id, course, old_status, new_status, actor) VALUES ($1, $2, $3, $4, $5)",
+      [username, 'password_reset', 'active', 'reset', req.user.username]
+    );
     res.json({ message: `Password reset for ${username}` });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
@@ -213,8 +249,9 @@ router.put('/students/:id/reset-password', async (req, res) => {
   try {
     const { id } = req.params;
     const { newPassword } = req.body;
-    if (!newPassword || newPassword.length < 8) {
-      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    const passwordError = validatePassword(newPassword);
+    if (passwordError) {
+      return res.status(400).json({ error: passwordError });
     }
 
     const hash = await bcrypt.hash(newPassword, 10);
@@ -222,6 +259,10 @@ router.put('/students/:id/reset-password', async (req, res) => {
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'Student not found' });
     }
+    await pool.query(
+      "INSERT INTO audit_log (student_id, course, old_status, new_status, actor) VALUES ($1, $2, $3, $4, $5)",
+      [id, 'password_reset', 'active', 'reset', req.user.username]
+    );
     res.json({ message: `Password reset for student ${id}` });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
@@ -297,6 +338,10 @@ router.delete('/clear-all', async (req, res) => {
     await pool.query('DELETE FROM results');
     await pool.query('DELETE FROM students');
     await pool.query("DELETE FROM settings WHERE key != 'appeal_deadline'");
+    await pool.query(
+      "INSERT INTO audit_log (student_id, course, old_status, new_status, actor) VALUES ($1, $2, $3, $4, $5)",
+      ['ALL', 'clear_all', 'active', 'deleted', req.user.username]
+    );
     res.json({ message: 'All student data cleared' });
   } catch (err) {
     console.error('Clear all error:', err);

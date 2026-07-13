@@ -19,7 +19,16 @@ const PORT = process.env.PORT || 3001;
 
 // Security
 app.use(helmet({
-  contentSecurityPolicy: false,
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "https://cdn.jsdelivr.net", "https://fonts.googleapis.com", "https://api.qrserver.com"],
+      styleSrc: ["'self'", "https://fonts.googleapis.com", "'unsafe-inline'"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "https://amrattiaewais69-gif.github.io", "https://api.qrserver.com"],
+      connectSrc: ["'self'"]
+    }
+  },
   crossOriginEmbedderPolicy: false
 }));
 
@@ -33,9 +42,9 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: function(origin, callback) {
-    if (!origin) return callback(null, true);
+    if (!origin) return callback(new Error('No origin header'));
     const clean = origin.replace(/^https?:\/\//, '');
-    if (allowedOrigins.some(o => clean === o || clean.startsWith(o))) {
+    if (allowedOrigins.some(o => clean === o || clean.endsWith('.' + o))) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
@@ -55,7 +64,7 @@ const generalLimiter = rateLimit({
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 50,
+  max: 10,
   message: { error: 'Too many login attempts, please try again later' }
 });
 
@@ -63,8 +72,14 @@ app.use('/api/', generalLimiter);
 app.use('/api/auth/login', loginLimiter);
 app.use('/api/auth/account-login', loginLimiter);
 
+const verifyLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { error: 'Too many verification requests, please try again later' }
+});
+
 // Body parsing
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 
 // Root redirect to login
 app.get('/', (req, res) => {
@@ -79,7 +94,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/student', studentRoutes);
 app.use('/api/control', controlRoutes);
 app.use('/api/account', accountantRoutes);
-app.use('/api/verify', verifyRoutes);
+app.use('/api/verify', verifyLimiter, verifyRoutes);
 app.use('/api/admin', adminRoutes);
 
 // Health check

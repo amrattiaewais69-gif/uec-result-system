@@ -279,11 +279,7 @@ async function createAccount() {
 }
 
 async function resetAccountPassword(username) {
-  let newPassword;
-  if (username === 'mohamed') newPassword = 'Mohamed1';
-  else if (username === 'amr') newPassword = 'Abdelrahman1';
-  else newPassword = prompt('Enter new password for ' + username + ':');
-
+  const newPassword = prompt('Enter new password for ' + username + ':');
   if (!newPassword) return;
 
   const res = await fetch(API + '/admin/accounts/' + username + '/reset-password', {
@@ -314,13 +310,23 @@ async function resetAllStudents() {
 let editType = '';
 let editOriginalId = '';
 
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
 function openEditStudent(id, name) {
   editType = 'student';
   editOriginalId = id;
   document.getElementById('editTitle').innerText = 'Edit Student';
-  document.getElementById('editFields').innerHTML =
-    '<label><b>Student ID</b></label><input id="editId" value="' + id + '">' +
-    '<label><b>Name</b></label><input id="editName" value="' + name + '">';
+  const fields = document.getElementById('editFields');
+  fields.innerHTML = '';
+  const lbl1 = document.createElement('label'); lbl1.innerHTML = '<b>Student ID</b>';
+  const inp1 = document.createElement('input'); inp1.id = 'editId'; inp1.value = id;
+  const lbl2 = document.createElement('label'); lbl2.innerHTML = '<b>Name</b>';
+  const inp2 = document.createElement('input'); inp2.id = 'editName'; inp2.value = name;
+  fields.appendChild(lbl1); fields.appendChild(inp1); fields.appendChild(lbl2); fields.appendChild(inp2);
   document.getElementById('editModal').classList.add('active');
 }
 
@@ -328,14 +334,20 @@ function openEditAccount(username, role, displayName) {
   editType = 'account';
   editOriginalId = username;
   document.getElementById('editTitle').innerText = 'Edit Account';
-  let roleOptions = '';
+  const fields = document.getElementById('editFields');
+  fields.innerHTML = '';
+  const lbl1 = document.createElement('label'); lbl1.innerHTML = '<b>Display Name</b>';
+  const inp1 = document.createElement('input'); inp1.id = 'editDisplayName'; inp1.value = displayName || '';
+  const lbl2 = document.createElement('label'); lbl2.innerHTML = '<b>Username</b>';
+  const inp2 = document.createElement('input'); inp2.id = 'editUsername'; inp2.value = username;
+  const lbl3 = document.createElement('label'); lbl3.innerHTML = '<b>Role</b>';
+  const sel = document.createElement('select'); sel.id = 'editRole';
   ['accountant', 'control', 'admin'].forEach(r => {
-    roleOptions += '<option value="' + r + '"' + (r === role ? ' selected' : '') + '>' + r + '</option>';
+    const opt = document.createElement('option'); opt.value = r; opt.textContent = r;
+    if (r === role) opt.selected = true;
+    sel.appendChild(opt);
   });
-  document.getElementById('editFields').innerHTML =
-    '<label><b>Display Name</b></label><input id="editDisplayName" value="' + (displayName || '') + '">' +
-    '<label><b>Username</b></label><input id="editUsername" value="' + username + '">' +
-    '<label><b>Role</b></label><select id="editRole">' + roleOptions + '</select>';
+  fields.appendChild(lbl1); fields.appendChild(inp1); fields.appendChild(lbl2); fields.appendChild(inp2); fields.appendChild(lbl3); fields.appendChild(sel);
   document.getElementById('editModal').classList.add('active');
 }
 
@@ -495,9 +507,16 @@ function searchUsers() {
 
   if (roleFilter === 'all' || roleFilter === 'student') {
     allStudents.filter(s => s.id.toLowerCase().includes(query) || s.name.toLowerCase().includes(query)).forEach(s => {
-      table.innerHTML += '<tr><td>' + s.id + '</td><td>' + s.name + '</td><td>Student</td><td>' +
-        '<button onclick="openEditStudent(\'' + s.id + '\',\'' + s.name.replace(/'/g, "\\'") + '\')">Edit</button> ' +
-        '<button onclick="resetStudentPassword(\'' + s.id + '\')">Reset Pass</button></td></tr>';
+      const tr = document.createElement('tr');
+      tr.innerHTML = '<td></td><td></td><td>Student</td><td></td>';
+      tr.cells[0].textContent = s.id;
+      tr.cells[1].textContent = s.name;
+      const editBtn = document.createElement('button'); editBtn.textContent = 'Edit';
+      editBtn.onclick = () => openEditStudent(s.id, s.name);
+      const resetBtn = document.createElement('button'); resetBtn.textContent = 'Reset Pass';
+      resetBtn.onclick = () => resetStudentPassword(s.id);
+      tr.cells[3].appendChild(editBtn); tr.cells[3].appendChild(resetBtn);
+      table.appendChild(tr);
     });
   }
 
@@ -506,10 +525,19 @@ function searchUsers() {
       if (roleFilter !== 'all' && a.role !== roleFilter) return false;
       return a.username.toLowerCase().includes(query) || a.role.toLowerCase().includes(query);
     }).forEach(a => {
-      table.innerHTML += '<tr><td>' + a.username + '</td><td>' + (a.display_name || '-') + '</td><td>' + a.role + '</td><td>' +
-        '<button onclick="openEditAccount(\'' + a.username + '\',\'' + a.role + '\',\'' + (a.display_name || '').replace(/'/g, "\\'") + '\')">Edit</button> ' +
-        '<button onclick="resetAccountPassword(\'' + a.username + '\')">Reset Pass</button> ' +
-        '<button class="danger" onclick="deleteAccountWithConfirm(\'' + a.username + '\')">Delete</button></td></tr>';
+      const tr = document.createElement('tr');
+      tr.innerHTML = '<td></td><td></td><td></td><td></td>';
+      tr.cells[0].textContent = a.username;
+      tr.cells[1].textContent = a.display_name || '-';
+      tr.cells[2].textContent = a.role;
+      const editBtn = document.createElement('button'); editBtn.textContent = 'Edit';
+      editBtn.onclick = () => openEditAccount(a.username, a.role, a.display_name || '');
+      const resetBtn = document.createElement('button'); resetBtn.textContent = 'Reset Pass';
+      resetBtn.onclick = () => resetAccountPassword(a.username);
+      const delBtn = document.createElement('button'); delBtn.textContent = 'Delete'; delBtn.className = 'danger';
+      delBtn.onclick = () => deleteAccountWithConfirm(a.username);
+      tr.cells[3].appendChild(editBtn); tr.cells[3].appendChild(resetBtn); tr.cells[3].appendChild(delBtn);
+      table.appendChild(tr);
     });
   }
 }
