@@ -62,7 +62,7 @@ router.post('/account-login', async (req, res) => {
       { expiresIn: '8h' }
     );
 
-    res.json({ token, role: account.role, username: account.username });
+    res.json({ token, role: account.role, username: account.username, displayName: account.display_name || account.username });
   } catch (err) {
     console.error('Account login error:', err);
     res.status(500).json({ error: 'Server error' });

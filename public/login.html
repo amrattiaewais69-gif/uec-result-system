@@ -131,14 +131,17 @@ async function loginAccount(username, password, expectedRole) {
       if (expectedRole === 'admin') {
         localStorage.setItem('adminToken', data.token);
         localStorage.setItem('adminUsername', data.username);
+        localStorage.setItem('adminDisplayName', data.displayName);
         location.href = 'admin.html';
       } else if (expectedRole === 'control') {
         localStorage.setItem('controlToken', data.token);
         localStorage.setItem('controlUsername', data.username);
+        localStorage.setItem('controlDisplayName', data.displayName);
         location.href = 'control.html';
       } else if (expectedRole === 'accountant') {
         localStorage.setItem('accountToken', data.token);
         localStorage.setItem('accountUsername', data.username);
+        localStorage.setItem('accountDisplayName', data.displayName);
         location.href = 'accounts.html';
       }
     } else if (res.ok && data.role !== expectedRole) {

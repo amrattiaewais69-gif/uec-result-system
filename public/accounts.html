@@ -77,7 +77,7 @@ if (!token) { location.href = 'login.html'; }
 if (token) {
   document.getElementById('loginBox').style.display = 'none';
   document.getElementById('mainBox').style.display = 'block';
-  document.getElementById('loggedUser').innerText = 'Logged in as: ' + (localStorage.getItem('accountUsername') || '');
+  document.getElementById('loggedUser').innerText = 'Logged in as: ' + (localStorage.getItem('accountDisplayName') || localStorage.getItem('accountUsername') || '');
 }
 
 async function login() {

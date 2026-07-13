@@ -155,7 +155,7 @@ if (!token) { location.href = 'login.html'; }
 if (token) {
   document.getElementById('loginBox').style.display = 'none';
   document.getElementById('adminPanel').style.display = 'block';
-  document.getElementById('loggedUser').innerText = 'Logged in as: ' + (localStorage.getItem('adminUsername') || 'admin');
+  document.getElementById('loggedUser').innerText = 'Logged in as: ' + (localStorage.getItem('adminDisplayName') || localStorage.getItem('adminUsername') || 'admin');
   loadAccounts();
   loadStudents();
   loadAppealSettings();
@@ -179,7 +179,7 @@ async function login() {
     localStorage.setItem('adminUsername', data.username);
     document.getElementById('loginBox').style.display = 'none';
     document.getElementById('adminPanel').style.display = 'block';
-    document.getElementById('loggedUser').innerText = 'Logged in as: ' + data.username;
+    document.getElementById('loggedUser').innerText = 'Logged in as: ' + (data.displayName || data.username);
     loadAccounts();
     loadStudents();
   } else {

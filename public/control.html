@@ -105,7 +105,7 @@ if (!token) { location.href = 'login.html'; }
 if (token) {
   document.getElementById('loginBox').style.display = 'none';
   document.getElementById('controlPanel').style.display = 'block';
-  document.getElementById('loggedUser').innerText = 'Logged in as: ' + (localStorage.getItem('controlUsername') || '');
+  document.getElementById('loggedUser').innerText = 'Logged in as: ' + (localStorage.getItem('controlDisplayName') || localStorage.getItem('controlUsername') || '');
   loadAppeals();
 }
 
