@@ -26,7 +26,7 @@ for (const line of dataLines) {
   }
   cols.push(current.trim());
 
-  const id = cols[0];
+  const id = cols[0].replace('-', '');
   const name = cols[1];
   const gpa = cols[9] || '';
   if (!id || !name) continue;

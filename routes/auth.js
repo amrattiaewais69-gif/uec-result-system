@@ -83,6 +83,12 @@ router.put('/change-password', async (req, res) => {
       return res.status(400).json({ error: 'Password must be at least 4 characters' });
     }
 
+    const studentResult = await pool.query('SELECT id FROM students WHERE id = $1', [decoded.id]);
+    const studentId = studentResult.rows[0].id.replace('-', '');
+    if (newPassword === studentResult.rows[0].id || newPassword === studentId) {
+      return res.status(400).json({ error: 'New password cannot be your student ID' });
+    }
+
     const hash = await bcrypt.hash(newPassword, 10);
     await pool.query('UPDATE students SET password_hash = $1, first_login = false WHERE id = $2', [hash, decoded.id]);
 
