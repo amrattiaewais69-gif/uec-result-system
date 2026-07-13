@@ -111,12 +111,25 @@ td{padding:8px;border:1px solid #ddd;text-align:center;}
 <p style="font-size:13px;color:#666;text-align:center;">Student default password = their student ID (e.g. 25100001)</p>
 </div>
 
+<button onclick="openChangePassword()">Change Password</button>
 <button class="logout" onclick="logout()">Logout</button>
 </div>
 
 <div class="footer">
 Designed by UEC ICT Department<br>
 © 2026 University of East Capital
+</div>
+
+<div id="cpModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;justify-content:center;align-items:center;">
+<div class="modal">
+<h3 style="margin-top:0;color:#345a9d;">Change Password</h3>
+<input id="cpNew" type="password" placeholder="New Password">
+<input id="cpConfirm" type="password" placeholder="Confirm New Password">
+<div style="text-align:right;margin-top:15px;">
+<button class="save" onclick="changePassword()">Save</button>
+<button class="cancel" onclick="closeChangePassword()">Cancel</button>
+</div>
+</div>
 </div>
 
 <div class="modal-overlay" id="editModal">
@@ -425,6 +438,34 @@ function logout() {
   localStorage.removeItem('adminToken');
   localStorage.removeItem('adminUsername');
   location.href = 'login.html';
+}
+
+function openChangePassword() { document.getElementById('cpModal').style.display = 'flex'; }
+function closeChangePassword() { document.getElementById('cpModal').style.display = 'none'; }
+
+async function changePassword() {
+  const newPass = document.getElementById('cpNew').value.trim();
+  const confirmPass = document.getElementById('cpConfirm').value.trim();
+  if (!newPass || !confirmPass) { alert('Fill in all fields'); return; }
+  if (newPass !== confirmPass) { alert('Passwords do not match'); return; }
+  if (newPass.length < 4) { alert('Password must be at least 4 characters'); return; }
+
+  try {
+    const res = await fetch(API + '/auth/account-change-password', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ newPassword: newPass })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      alert('Password updated. Please login again.');
+      localStorage.removeItem('adminToken');
+      localStorage.removeItem('adminUsername');
+      location.href = 'login.html';
+    } else {
+      alert(data.error || 'Failed');
+    }
+  } catch (err) { alert('Error'); }
 }
 
 async function loadStudents() {

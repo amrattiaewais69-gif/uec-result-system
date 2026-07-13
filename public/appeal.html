@@ -63,6 +63,7 @@ if (!token || !student) { location = 'login.html'; }
 document.getElementById('name').innerText = student.name;
 document.getElementById('sid').innerText = 'Student ID: ' + student.id;
 document.getElementById('photo').src = 'https://amrattiaewais69-gif.github.io/student-results/photos/' + student.id + '.jpg';
+document.getElementById('photo').onerror = function() { this.src = 'default-avatar.svg'; };
 
 // Load Courses with Deadline Check
 async function loadCourses() {

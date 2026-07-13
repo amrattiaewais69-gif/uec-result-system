@@ -99,4 +99,28 @@ router.put('/change-password', async (req, res) => {
   }
 });
 
+// Change password (account - admin/control/accountant)
+router.put('/account-change-password', async (req, res) => {
+  try {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    if (!token) return res.status(401).json({ error: 'Access denied' });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const { newPassword } = req.body;
+
+    if (!newPassword || newPassword.length < 4) {
+      return res.status(400).json({ error: 'Password must be at least 4 characters' });
+    }
+
+    const hash = await bcrypt.hash(newPassword, 10);
+    await pool.query('UPDATE accounts SET password_hash = $1 WHERE username = $2', [hash, decoded.username]);
+
+    res.json({ message: 'Password updated successfully' });
+  } catch (err) {
+    console.error('Account change password error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 module.exports = router;
