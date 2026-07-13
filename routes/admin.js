@@ -289,4 +289,19 @@ router.put('/settings', async (req, res) => {
   }
 });
 
+// Clear all student data
+router.delete('/clear-all', async (req, res) => {
+  try {
+    await pool.query('DELETE FROM appeals');
+    await pool.query('DELETE FROM payments');
+    await pool.query('DELETE FROM results');
+    await pool.query('DELETE FROM students');
+    await pool.query("DELETE FROM settings WHERE key != 'appeal_deadline'");
+    res.json({ message: 'All student data cleared' });
+  } catch (err) {
+    console.error('Clear all error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 module.exports = router;
