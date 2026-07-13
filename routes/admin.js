@@ -193,8 +193,8 @@ router.put('/accounts/:username/reset-password', async (req, res) => {
   try {
     const { username } = req.params;
     const { newPassword } = req.body;
-    if (!newPassword || newPassword.length < 4) {
-      return res.status(400).json({ error: 'Password must be at least 4 characters' });
+    if (!newPassword || newPassword.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
     }
 
     const hash = await bcrypt.hash(newPassword, 10);
@@ -213,8 +213,8 @@ router.put('/students/:id/reset-password', async (req, res) => {
   try {
     const { id } = req.params;
     const { newPassword } = req.body;
-    if (!newPassword || newPassword.length < 4) {
-      return res.status(400).json({ error: 'Password must be at least 4 characters' });
+    if (!newPassword || newPassword.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
     }
 
     const hash = await bcrypt.hash(newPassword, 10);

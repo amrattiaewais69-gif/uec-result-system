@@ -72,6 +72,7 @@ Designed by UEC ICT Department<br>
 <h3 style="margin-top:0;color:#345a9d;">Change Password</h3>
 <input id="cpNew" type="password" placeholder="New Password" style="width:100%;padding:10px;margin:6px 0;border-radius:6px;border:1px solid #ccc;">
 <input id="cpConfirm" type="password" placeholder="Confirm New Password" style="width:100%;padding:10px;margin:6px 0;border-radius:6px;border:1px solid #ccc;">
+<p style="font-size:11px;color:#888;margin:4px 0 0;text-align:left;">Min 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special (!@#$%^&*). Example: MyPass@2026</p>
 <div style="margin-top:12px;">
 <button onclick="changePassword()" style="padding:10px 18px;background:#345a9d;color:white;border:none;border-radius:6px;cursor:pointer;">Save</button>
 <button onclick="closeChangePassword()" style="padding:10px 18px;background:#777;color:white;border:none;border-radius:6px;cursor:pointer;margin-left:8px;">Cancel</button>
@@ -222,7 +223,11 @@ async function changePassword() {
   const confirmPass = document.getElementById('cpConfirm').value.trim();
   if (!newPass || !confirmPass) { alert('Fill in all fields'); return; }
   if (newPass !== confirmPass) { alert('Passwords do not match'); return; }
-  if (newPass.length < 4) { alert('Password must be at least 4 characters'); return; }
+  if (newPass.length < 8) { alert('Password must be at least 8 characters'); return; }
+  if (!/[A-Z]/.test(newPass)) { alert('Password must contain at least one uppercase letter'); return; }
+  if (!/[a-z]/.test(newPass)) { alert('Password must contain at least one lowercase letter'); return; }
+  if (!/[0-9]/.test(newPass)) { alert('Password must contain at least one number'); return; }
+  if (!/[^A-Za-z0-9]/.test(newPass)) { alert('Password must contain at least one special character (!@#$%^&*)'); return; }
 
   try {
     const res = await fetch(API + '/auth/change-password', {

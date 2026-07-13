@@ -5,6 +5,15 @@ const pool = require('../config/database');
 
 const router = express.Router();
 
+function validatePassword(password) {
+  if (!password || password.length < 8) return 'Password must be at least 8 characters';
+  if (!/[A-Z]/.test(password)) return 'Password must contain at least one uppercase letter';
+  if (!/[a-z]/.test(password)) return 'Password must contain at least one lowercase letter';
+  if (!/[0-9]/.test(password)) return 'Password must contain at least one number';
+  if (!/[^A-Za-z0-9]/.test(password)) return 'Password must contain at least one special character (!@#$%^&*)';
+  return null;
+}
+
 // Student login
 router.post('/login', async (req, res) => {
   try {
@@ -79,8 +88,9 @@ router.put('/change-password', async (req, res) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const { newPassword } = req.body;
 
-    if (!newPassword || newPassword.length < 4) {
-      return res.status(400).json({ error: 'Password must be at least 4 characters' });
+    const passwordError = validatePassword(newPassword);
+    if (passwordError) {
+      return res.status(400).json({ error: passwordError });
     }
 
     const studentResult = await pool.query('SELECT id FROM students WHERE id = $1', [decoded.id]);
@@ -109,8 +119,9 @@ router.put('/account-change-password', async (req, res) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const { newPassword } = req.body;
 
-    if (!newPassword || newPassword.length < 4) {
-      return res.status(400).json({ error: 'Password must be at least 4 characters' });
+    const passwordError = validatePassword(newPassword);
+    if (passwordError) {
+      return res.status(400).json({ error: passwordError });
     }
 
     const hash = await bcrypt.hash(newPassword, 10);
